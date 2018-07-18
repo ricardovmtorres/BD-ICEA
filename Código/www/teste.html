@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.js"></script>
+<title>Movable (Draggable) DIV tag Tutorial Document</title>
+<style>
+#divcontainer{
+border: 1px solid lightgray;
+width: 500px;
+height: 300px;
+margin: 0 auto;
+padding: 3px;
+}
+#makeitmove{
+background: lightyellow;
+width: 100px;
+height: 100px;
+border: 1px solid orange;
+cursor: move;
+}
+</style>
+<script>
+$(document).ready(function(){
+$("#makeitmove").draggable( {containment: "#divcontainer", scroll: false} );
+});
+</script>
+</head>
+<body>
+<h3 align="center">TheOnlyTutorials.com - Draggable Resizable DIV Tag Tutorials</h3>
+<div id="divcontainer">
+<div id="makeitmove">Click and Drag me!</div>
+</div>
+</body>
+</html>
