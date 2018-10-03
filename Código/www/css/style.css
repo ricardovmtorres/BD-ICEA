@@ -342,7 +342,6 @@ path {
 }
 
 .description-arrow{
-	background-color: white;
 	z-index: 101;
 }
 
@@ -429,4 +428,54 @@ span.keyboard-shortcut {
     float: right;
     padding-left: 50px;
     color: gray;
+}
+
+
+/*DIAMOND*/
+/** COMMON ELEMENT PROPERTIES **/
+.shape {
+    z-index:2;
+    position:absolute;
+    cursor:pointer;
+    text-align:center;
+    color:#333;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+	z-index:2;
+    opacity:0.7;
+    position:absolute;
+    cursor:pointer;
+    text-align:center;
+    color:#333;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.newAttributes {
+	z-index:2;
+    opacity:0.7;
+    position:absolute;
+    cursor:pointer;
+    text-align:center;
+    color:#333;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    width:15px;
+    height:10px;
+    left:-55px;
+    top:-55px;
+}
+
+[data-shape=Diamond] {
+    width:150px;
+    height:150px;
+    left:-73.5px;
+    top:-76.5px;
+    background-image:url('../imgs/relation/diamond4.png');
 }

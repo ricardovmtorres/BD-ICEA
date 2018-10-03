@@ -1,113 +1,442 @@
+//app
+//Namespaces
+// el: references a DOM object
+// $el: it is a jQuery object that still references the same DOM object as el
+// console.log(this.el);
+
+var ENTER_KEY = 13;
+var ESC_KEY = 27;
+var LEFT_ARROW_KEY = 37;
+var TOP_ARROW_KEY = 38;
+var RIGHT_ARROW_KEY = 39;
+var DOWN_ARROW_KEY = 40;
+var DELETE_KEY = 46;
+var B_KEY = 66;
+var C_KEY = 67;
+var D_KEY = 68;
+var F_KEY = 70;
+var V_KEY = 86;
+var Z_KEY = 90;
+var F1_KEY = 112;
+var F2_KEY = 113;
+var newAttribute = 1;
+var attrCnt = 0;
+
+var app = {
+	// OMT-G namespace
+	omtg : {},
+
+	msgs : {
+		DELETE_CONNECTION: "This connection will be detached. Are you sure?",
+		DELETE_DIAGRAM: "This diagram will be removed. All its connection will be detached. Are you sure?",
+		DELETE_DIAGRAMS: "The selected diagrams will be removed. All their connections will be detached. Are you sure?",
+		EMPTY_PROJECT: "Project is empty, there is nothing to export!",
+		NOT_EMPTY_PROJECT: "Project is not empty",
+	},
+};
+
+$(function () {
+	'use strict';
+
+	//Criação de model tool atraves da criação do collection tools
+	app.classTools = new app.Tools([
+		{ name : 'Entidade', model : 'omtgDiagram', tooltip: 'Polygon', icon: 'imgs/omtg/polygon.png'}
+	]);
+
+	//Criação de model tool atraves da criação do collection tools
+	app.relationshipTools = new app.Tools([
+	     { name : 'association', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
+	     { name : 'umn', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
+	     { name : 'num', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/aggregation.png' },
+	     { name : 'nm', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/aggregation.png' },
+	]);
+
+	// List of toolboxes
+	app.toolboxes = new app.Toolboxes([
+	     {name: "Classes", tools : app.classTools},
+	     {name: "Relationships", tools : app.relationshipTools},
+	]);	
+
+	// Canvas Model
+	app.canvas = new app.Canvas();
+
+	// Initialize Backbone views.
+	app.bodyView = new app.BodyView();
+	app.navbarView = new app.NavbarView({el: $("#tools"), model: app.toolboxes});
+	app.canvasView = new app.CanvasView({el: $("#canvas"), model: app.canvas});
+	
+	/*app.canvas.get('activeTools').each(function(m){
+		alert(m.get("name")+" ativada");
+	});*/
+
+	//funcionando
+	/*app.relationshipTools.each(function(m){
+		alert(m.get("name")+" criada");
+	});*/
+});
+
 /*Model*/
-//[Diagram, Tool, Toolbox, Undo Manger, Canvas], TODO: Attribute
+//[Diamond, Diagram, Tool, Toolbox, Undo Manger, Canvas, Attribute]
+//TODO: newAttribute
 //-------------------------------------------------------------------------------------------------------------
 
-// Diagram Model
-// ----------
-Diagram = Backbone.Model.extend({
+// Diamond
+//-----------
 
-	defaults : {
-		id : this.cid, 
-		type : '',
-		name : 'Entidade' + this.id,
-		attributes : '',
-		selected : false,
-		top : 10,
-		left : 10
+app.Diamond = Backbone.Model.extend({
+
+	defaults : function() {
+		return{
+			id : this.cid, 
+			type : '',
+			source:'',
+			target: '',
+			name : 'diamond_' + this.cid,
+			attributes : new app.Attributes(),
+			selected : false,
+			top : 10,
+			left : 10
+		};
 	},
 
-	initialize : function(){
+	initialize: function(dObject){
 		
-		//alert("Entidade foi criada");
-		//app.omtg.DiagramView
+		var diamondV = new app.DiamondView({el : $("#container"), model: this});
+		console.log(this.el);
+
 	},
-		
+
+	/*get: function(attr) {
+    	return getNested(this.attr);
+    },*/
+
 	duplicate: function() {
 		var offset = Math.floor(Math.random() * 31);
 		
-		var newDiagram = new Diagram({
+		var newDiamond = new app.Diamond({
 			'type' : this.get('type'),
 			'left' : this.get('left') + 40 + offset,
 			'top' : this.get('top') + 40 + offset,
 			'attributes' : this.get('attributes').clone()
 		});
-		
+			
 		for(var i=1; ; i++){
 			var cloneName = this.get('name') + '_' + i;
-			if( app.canvas.get('diagrams').findByName(cloneName) == null ){
-				newDiagram.set('name', cloneName );
+			if( app.canvas.get('diamonds').findByName(cloneName) == null ){
+				newDiamond.set('name', cloneName );
 				break;
 			}
-		} 
+		}
 			
-		return newDiagram;
+		return newDiamond;
 	},
 		
 	copy: function() {
 		app.canvas.set('clipboard', this.clone());
 	},
 		
-	// Move the diagram
+	// Move the diamond
 	move: function(t, l) {
 		this.set('top', this.get('top') + t);
 		this.set('left', this.get('left') + l);
 	},
-		
-	// Toggle the `selected` state of this diagram.
-	toggleSelected: function () {
-		this.set('selected', !this.get('selected'));
-	},
-		
+
 	// Return a copy of the model as XML
-	toXML: function () {
-		return "<class>" +
-		"<name>" + this.get('name') + "</name>" +
-		"<top>" + this.get('top') + "</top>" +
-		"<left>" + this.get('left') + "</left>" +
-		"<type>" + this.get('type') + "</type>" +
-		"<attributes> </attributes>" +
-		"</class>";			
-	},
+		toXML: function () {
+			return "<diamond>" +
+			"<name>" + this.get('name') + "</name>" +
+			"<top>" + this.get('top') + "</top>" +
+			"<left>" + this.get('left') + "</left>" +
+			"<type>" + this.get('type') + "</type>" +
+			"<attributes>" + this.get('attributes').toXML() + "</attributes>" +
+			"</diamond>";			
+		},
+
+});
+
+// Attribute Model
+// ----------
+app.Attribute = Backbone.Model.extend({ 
+		
+		defaults : function() {
+			return {
+				diagram: '',
+				name : '',
+				type : 'INTEGER',
+				defaultValue : '',
+				isKey : false,
+				length : '',
+				scale : '',
+				size : '',
+				isNotNull : false,
+				domain : '',
+				top: 10,
+				left: 10
+			};
+		},
+		
+		// Return a copy of the model as XML
+		toXML: function () {
+			var xml = "<attribute>";
+			
+			xml += "<name>" + this.get('name') + "</name>";
+			xml += "<type>" + this.get('type') + "</type>";
+			
+			if(this.get('isKey'))
+				xml += "<key>" + this.get('isKey') + "</key>";
+
+			if(this.get('length') != "")
+				xml += "<length>" + this.get('length') + "</length>";
+
+			if(this.get('scale') != "")
+				xml += "<scale>" + this.get('scale') + "</scale>";
+			
+			if(this.get('isNotNull'))
+				xml += "<not-null>" + this.get('isNotNull') + "</not-null>";
+			
+			if(this.get('defaultValue') != "")
+				xml += "<default>" + this.get('defaultValue') + "</default>";
+
+			if(this.get('size') != "")
+				xml += "<size>" + this.get('size') + "</size>";		
+			
+			if(this.get('domain') != ""){
+				xml += "<domain>";
+				var values = this.domain.split("\n");		
+				for ( var i = 0; i < values.length; i++) {
+					xml += "<value>" + values[i] + "</value>";
+				}		
+				xml += "</domain>";
+			}
+			xml += "</attribute>";
+			
+			return xml;			
+		},
+});
+
+// Diagram Model
+// ----------
+app.Diagram = Backbone.Model.extend({
+
+	defaults : function() {
+			return {
+				id : this.cid, 
+				type : '',
+				name : 'Class_' + this.cid,
+				attributes : new app.Attributes(),
+				selected : false,
+				top : 10,
+				left : 10
+			};
+		},
+
+		getTop: function(){
+			return this.top;
+		},
+
+		getLeft: function(){
+			return this.left;
+		},
+		
+		duplicate: function() {
+			var offset = Math.floor(Math.random() * 31);
+			
+			var newDiagram = new app.Diagram({
+				'type' : this.get('type'),
+				'left' : this.get('left') + 40 + offset,
+				'top' : this.get('top') + 40 + offset,
+				'attributes' : this.get('attributes').clone()
+			});
+			
+			for(var i=1; ; i++){
+				var cloneName = this.get('name') + '_' + i;
+				if( app.canvas.get('diagrams').findByName(cloneName) == null ){
+					newDiagram.set('name', cloneName );
+					break;
+				}
+			}
+			
+			return newDiagram;
+		},
+		
+		copy: function() {
+			app.canvas.set('clipboard', this.clone());
+		},
+		
+		// Move the diagram
+		move: function(t, l) {
+			this.set('top', this.get('top') + t);
+			this.set('left', this.get('left') + l);
+		},
+		
+		// Toggle the `selected` state of this diagram.
+		toggleSelected: function () {
+			this.set('selected', !this.get('selected'));
+		},
+		
+		// Return a copy of the model as XML
+		toXML: function () {
+			return "<class>" +
+			"<name>" + this.get('name') + "</name>" +
+			"<top>" + this.get('top') + "</top>" +
+			"<left>" + this.get('left') + "</left>" +
+			"<type>" + this.get('type') + "</type>" +
+			"<attributes>" + this.get('attributes').toXML() + "</attributes>" +
+			"</class>";			
+		},
 	
 });
 
 // Tool Model
 // ----------
-Tool = Backbone.Model.extend({
+app.Tool = Backbone.Model.extend({
 
-	defaults : {
-		name : '',
-		type : '',
-		tooltip: '',
-		icon: '',
-		active: false,
-	},
-	
 	initialize: function(){
 
 	},
+
+	defaults : function() {
+			return {
+				name : '',
+				type : '',
+				tooltip: '',
+				icon: '',
+				active: false,
+			};
+		},
 		
-	// Toggle the `selected` state of this tool
-	toggleActive: function () {
-		//alert("ativo");
-		this.set('active', !this.get('active'));
-	},
+		// Toggle the `selected` state of this tool
+		toggleActive: function () {
+			this.set('active', !this.get('active'));
+		},
 });
 
 // Toolbox Model
 // ----------
-Toolbox = Backbone.Model.extend({
-	defaults : {
-		name : '',
-		tools : null,
-		icon : '',
-	},
+app.Toolbox = Backbone.Model.extend({
+	
 	initialize: function(){
 
 	},
+	defaults : function() {
+			return {
+				name : '',
+				tools : null
+			}
+	},
 });
 
-UndoManager = Backbone.Model.extend({
+// Canvas Model
+// ----------
+/*Backbone+funções próprias*/
+	app.Canvas = Backbone.Model.extend({
+		defaults : function() {
+			return {
+				diagrams : new app.Diagrams(),
+				diamonds : new app.Diamonds(),
+				attributes : new app.Attributes(), 
+				activeTool : null,
+				grid : true,
+				diagramShadow : true,
+				snapToGrid : 10,
+				clipboard : null,
+				undoManager : new app.UndoManager(),
+			}; 
+		},
+		
+		toXML : function() {
+						
+			var xml = '<?xml version="1.0" encoding="UTF-8"?>'
+				+ '<omtg-conceptual-schema xsi:noNamespaceSchemaLocation="omtg-schema-template.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+				+ this.get('diagrams').toXML()
+				+ this.connectionsToXML()
+				+ '</omtg-conceptual-schema>';
+
+			return xml;
+		},
+		
+		hasClipboard : function() {
+			if(this.get('clipboard') != null)
+				return true;
+			return false;
+		},
+		
+		duplicateDiagram : function(diagram) {
+			var clone = diagram.duplicate();			
+			this.get('diagrams').add(clone);
+			this.trigger('updateHistory', this);
+		},
+		
+		copyDiagram : function(diagram) {
+			diagram.copy();
+		},
+		
+		pasteDiagram : function(top, left) {			
+			var clipboard = this.get('clipboard');
+			
+			if(clipboard != null){ 					
+				var diagram = clipboard.duplicate();
+							
+				diagram.set('top', top);
+				diagram.set('left', left);				 
+				this.get('diagrams').add(diagram);
+			}		
+			
+			this.trigger('updateHistory', this);
+		},
+		
+		// Convert all connections to XML
+		connectionsToXML : function() {
+			var conns = app.plumb.getConnections();
+			var connsXML = "";
+						
+			for(var i=0; i<conns.length; i++){
+				var type = conns[i].getType()[0];
+				if (type != "arc-network-sibling"
+					&& type != "cartographic-leg" 
+						&& type != "generalization-leg"){
+					connsXML += this.connectionToXML(conns[i]);
+				}
+	    	}
+			
+			return "<relationships>" + connsXML + "</relationships>";			
+		},		
+		
+		// Convert a connection to XML
+		connectionToXML : function(conn){
+			
+			var type = conn.getType()[0];
+			
+			switch(type){
+			case "aggregation":
+				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
+				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
+				return "<conventional-aggregation>" +
+				"<class1>" + sourceName + "</class1>" +
+				"<class2>" + targetName + "</class2>" +
+				"</conventional-aggregation>";
+			
+			case "association":
+				var description = conn.getOverlay("description-label").getLabel();
+				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
+				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
+				var minA = conn.getParameter("minA");
+				var maxA = conn.getParameter("maxA");
+				var minB = conn.getParameter("minB");
+				var maxB = conn.getParameter("maxB");			
+				return "<conventional>" +
+				"<name>" + description + "</name>" +
+				"<class1>" + sourceName + "</class1><cardinality1><min>" + minA + "</min><max>" + maxA + "</max></cardinality1>" +
+				"<class2>" + targetName + "</class2><cardinality2><min>" + minB + "</min><max>" + maxB + "</max></cardinality2>" +
+				"</conventional>";
+			
+			default:
+				return "";
+			}
+		}
+	});
+
+app.UndoManager = Backbone.Model.extend({
 
 	defaults : function() {
 		return {
@@ -173,53 +502,196 @@ UndoManager = Backbone.Model.extend({
 });
 
 /*Collection*/
-//[Diagrams, Tools, Toolboxes], TODO: Attributes
+//[Diamonds, Attributes, Diagrams, Tools, Toolboxes] 
+//TODO: newAttributes
 //-------------------------------------------------------------------------------------------------------------
+
+// Diamonds Collection
+// ----------
+
+app.Diamonds = Backbone.Collection.extend({
+		model : app.Diamond,
+				
+		initialize: function() {	       
+	        this.listenTo(this, 'change:selected', this.propagate_selected);
+	    },
+	    
+	    removeAll : function() {
+	    	var diamond;
+	    	while (diamond = this.last()) {
+	    		diamond.trigger("destroy", diamond);  
+	    	}
+		},
+		
+		//TODO : app.msgs.DELETE_DIAMONDS
+		removeSet : function(set){			
+			if (confirm(app.msgs.DELETE_DIAGRAMS)){			
+				for (var i = 0; i < set.length; i++){
+					app.plumb.detachAllConnections(set[i].id, {fireEvent : false}); 
+		    		set[i].trigger("destroy", set[i]);
+		    	}
+				app.canvasView.updateHistory();
+			}
+		},
+	    
+	    unselectAll: function(){ 
+	    	this.each(function(m) {
+	    		m.set({ selected: false }, { silent: false });
+	    	});
+	    },
+		
+	    getAttrById : function(id, attr) {		    	
+			var diamond = this.findWhere({id : id});
+			if(diamond)
+				return diamond.get(attr);			
+			return null;
+		},
+		
+		findByName : function(name) {
+			var ds = this.where({name : name});
+			for(var i=0; i<ds.length; i++){
+				return dms[i];
+			}
+			return null;
+		},
+		
+		toXML: function() {
+		
+			var xml = "";
+			this.each(function(model) {
+	    		xml += model.toXML();
+	    	});
+			return "<diamonds>" + xml + "</diamonds>";
+		},
+});
+
+app.Attributes = Backbone.Collection.extend({
+		model : app.Attribute,
+		
+		toXML: function() {
+			var xml = "";
+			this.each(function(model) {
+	    		xml += model.toXML();
+	    	});
+			return xml;
+		},
+});
+
+// OMTGDiagrams Collection
+// ----------
+
+app.Diagrams = Backbone.Collection.extend({
+		model : app.Diagram,
+				
+		initialize: function() {	       
+	        this.listenTo(this, 'change:selected', this.propagate_selected);
+	    },
+	    
+	    removeAll : function() {
+	    	var diagram;
+	    	while (diagram = this.last()) {
+	    		diagram.trigger("destroy", diagram);  
+	    	}
+		},
+		
+		removeSet : function(set){			
+			if (confirm(app.msgs.DELETE_DIAGRAMS)){			
+				for (var i = 0; i < set.length; i++){
+					app.plumb.detachAllConnections(set[i].id, {fireEvent : false}); 
+		    		set[i].trigger("destroy", set[i]);
+		    	}
+				app.canvasView.updateHistory();
+			}
+		},
+		
+		getSelected : function() {
+			var diagram = this.findWhere({selected : true});
+			return this.where({selected : true});
+		},
+	    
+	    propagate_selected: function(p) { 
+    	
+	    	if(!p.get('selected'))
+	            return;
+	        this.each(function(m) {
+	            if(p.id != m.id)
+	                m.set({ selected: false }, { silent: false });
+	        });
+	    }, 
+	    
+	    unselectAll: function(){ 
+	    	this.each(function(m) {
+	    		m.set({ selected: false }, { silent: false });
+	    	});
+	    },
+		
+	    getAttrById : function(id, attr) {		    	
+			var diagram = this.findWhere({id : id});
+			if(diagram)
+				return diagram.get(attr);			
+			return null;
+		},
+		
+		findByName : function(name) {
+			var ds = this.where({name : name});
+			for(var i=0; i<ds.length; i++){
+				return ds[i];
+			}
+			return null;
+		},
+		
+		toXML: function() {
+		
+			var xml = "";
+			this.each(function(model) {
+	    		xml += model.toXML();
+	    	});
+			return "<classes>" + xml + "</classes>";
+		},
+});
 
 // Tools Collection 
 // ----------
-Tools = Backbone.Collection.extend({
-	model : Tool,
-	
-	initialize : function() {
+app.Tools = Backbone.Collection.extend({
+		model : app.Tool,
 		
-	   	//alert("tools criadas");
-		this.listenTo(this, 'change:active', this.propagate_active);
-	},
-	
-	propagate_active: function(p) {
-		if(!p.get('active'))
-            return;
-        this.each(function(m) {
-            if(p.get('name') != m.get('name'))
-            	m.set({ active: false }, { silent: false });
-        });
-	    app.canvas.set('activeTool', p);
-	},
+		initialize : function() {
+			this.listenTo(this, 'change:active', this.propagate_active);
+		},
+		
+		propagate_active: function(p) {
+			if(!p.get('active'))
+	            return;
+	        this.each(function(m) {
+	            if(p.get('name') != m.get('name'))
+	            	m.set({ active: false }, { silent: false });
+	        });
+	        app.canvas.set('activeTool', p);
+	    },
 	    
-	deactivateAll: function(){
-	  	this.each(function(m) {
-	   		m.set({ active: false }, { silent: false });
-	   	});
-	},
+	    deactivateAll: function(){
+	    	this.each(function(m) {
+	    		m.set({ active: false }, { silent: false });
+	    	});
+	    },
 
-	activated : function() {
-		return this.findWhere({
-			active : true
-		});
-	},
+		activated : function() {
+			return this.findWhere({
+				active : true
+			});
+		},
 
-	getTooltip : function(name) {
-		return this.findWhere({
-			name : name
-		}).get('tooltip');
-	},
-});
+		getTooltip : function(name) {
+			return this.findWhere({
+				name : name
+			}).get('tooltip');
+		},
+	});
 
 // Toolboxes Collection
 // ----------
-Toolboxes = Backbone.Collection.extend({
-	model: Toolbox,
+app.Toolboxes = Backbone.Collection.extend({
+	model: app.Toolbox,
 
 	defaults : {
 		name : '',
@@ -231,300 +703,185 @@ Toolboxes = Backbone.Collection.extend({
 	},
 });
 
-// Diagrams Collection
-// ----------
-Diagrams = Backbone.Collection.extend({
-	model : Diagram,
-				
-	initialize: function() {
-		//alert("Diagrams Collection Criada");	       
-        this.listenTo(this, 'change:selected', this.propagate_selected);
-    },
-
-    getSelected : function() {
-		return this.where({selected : true});
-	},
-	    
-	propagate_selected: function(p) { 
-    	
-	   	if(!p.get('selected'))
-	        return;
-	    this.each(function(m) {
-	        if(p.id != m.id)
-	            m.set({ selected: false }, { silent: false });
-	    });
-	}, 
-	    
-	unselectAll: function(){ 
-		alert("asd");
-	  	this.each(function(m) {
-	  		m.set({ selected: false }, { silent: false });
-	  	});
-	},
-
-	toXML: function() {
-		
-			var xml = "";
-			this.each(function(model) {
-	    		xml += model.toXML();
-	    	});
-			return "<classes>" + xml + "</classes>";
-		},
-    
-});
-
-// Canvas Model
-// ----------
-/*Backbone+funções próprias*/
-Canvas = Backbone.Model.extend({
-
-	defaults : {
-		diagrams : new Diagrams(),
-		activeTool : null,
-		grid : true,
-		diagramShadow : true,
-		snapToGrid : 10,
-		clipboard : null,
-		undoManager : new UndoManager(),
-	},
-
-	initialize: function(){
-		//this.set({ diagrams: new Diagrams() });
-		//alert("Canvas criado");
-	},
-
-	toXML : function() {
-						
-			var xml = '<?xml version="1.0" encoding="UTF-8"?>'
-				+ '<omtg-conceptual-schema xsi:noNamespaceSchemaLocation="omtg-schema-template.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
-				+ this.get('diagrams').toXML()
-				+ this.connectionsToXML()
-				+ '</omtg-conceptual-schema>';
-
-			return xml;
-		},
-		
-		hasClipboard : function() {
-			if(this.get('clipboard') != null)
-				return true;
-			return false;
-		},
-		
-		duplicateDiagram : function(diagram) {
-			var clone = diagram.duplicate();			
-			this.get('diagrams').add(clone);
-			this.trigger('updateHistory', this);
-		},
-		
-		copyDiagram : function(diagram) {
-			diagram.copy();
-		},
-		
-		pasteDiagram : function(top, left) {			
-			var clipboard = this.get('clipboard');
-			
-			if(clipboard != null){ 					
-				var diagram = clipboard.duplicate();
-							
-				diagram.set('top', top);
-				diagram.set('left', left);				 
-				this.get('diagrams').add(diagram);
-			}		
-			
-			this.trigger('updateHistory', this);
-		},
-		
-		// Convert all connections to XML
-		connectionsToXML : function() {
-			var conns = app.plumb.getConnections();
-			var connsXML = "";
-						
-			for(var i=0; i<conns.length; i++){
-				var type = conns[i].getType()[0];
-				if (type != "arc-network-sibling"
-					&& type != "cartographic-leg" 
-						&& type != "generalization-leg"){
-					connsXML += this.connectionToXML(conns[i]);
-				}
-	    	}
-			
-			return "<relationships>" + connsXML + "</relationships>";			
-		},	
-		// Convert a connection to XML
-		connectionToXML : function(conn){
-			
-			var type = conn.getType()[0];
-			
-			switch(type){
-			case "aggregation":
-				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
-				return "<conventional-aggregation>" +
-				"<class1>" + sourceName + "</class1>" +
-				"<class2>" + targetName + "</class2>" +
-				"</conventional-aggregation>";
-				
-			case "spatial-aggregation":
-				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
-				return "<spatial-aggregation>" +
-				"<class1>" + sourceName + "</class1>" +
-				"<class2>" + targetName + "</class2>" +
-				"</spatial-aggregation>";
-				
-			case "association":
-				var description = conn.getOverlay("description-label").getLabel();
-				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
-				var minA = conn.getParameter("minA");
-				var maxA = conn.getParameter("maxA");
-				var minB = conn.getParameter("minB");
-				var maxB = conn.getParameter("maxB");			
-				return "<conventional>" +
-				"<name>" + description + "</name>" +
-				"<class1>" + sourceName + "</class1><cardinality1><min>" + minA + "</min><max>" + maxA + "</max></cardinality1>" +
-				"<class2>" + targetName + "</class2><cardinality2><min>" + minB + "</min><max>" + maxB + "</max></cardinality2>" +
-				"</conventional>";
-				
-			case "spatial-association":
-				var description = conn.getOverlay("description-label").getLabel().split(" ")[0];
-				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
-				var minA = conn.getParameter("minA");
-				var maxA = conn.getParameter("maxA");
-				var minB = conn.getParameter("minB");
-				var maxB = conn.getParameter("maxB");	
-				var distance = conn.getParameter("distance");	
-				return "<topological>" +
-				"<spatial-relations><spatial-relation>" + description + "</spatial-relation><distance>" + distance + "</distance></spatial-relations>" +
-				"<class1>" + sourceName + "</class1><cardinality1><min>" + minA + "</min><max>" + maxA + "</max></cardinality1>" +
-				"<class2>" + targetName + "</class2><cardinality2><min>" + minB + "</min><max>" + maxB + "</max></cardinality2>" +
-				"</topological>";
-				
-			case "arc-network":
-			case "arc-network-self":
-				var description = conn.getOverlay("description-label").getLabel();
-				var sourceName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				var targetName = this.get('diagrams').getAttrById(conn.targetId, 'name');
-				return "<network>" +
-				"<name>" + description + "</name>" +
-				"<class1>" + sourceName + "</class1>" +
-				"<class2>" + targetName + "</class2>" +
-				"</network>";
-				
-			case "generalization-disjoint-partial":
-			case "generalization-disjoint-total":
-			case "generalization-overlapping-partial":
-			case "generalization-overlapping-total":				
-				var superName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				
-				var endpoint = conn.endpoints[0];				
-				var participation = endpoint.getParameter("participation");
-				var disjointness = endpoint.getParameter("disjointness");
-
-				var subClasses = "";
-				var subConns = endpoint.getAttachedElements();
-				for(var i=0; i<subConns.length; i++){
-					var subName = this.get('diagrams').getAttrById(subConns[i].targetId, 'name');
-		    		subClasses += "<subclass>" + subName + "</subclass>";
-		    	}
-				
-				return "<generalization>" +
-				"<superclass>" + superName + "</superclass>" +
-				"<participation>" + participation + "</participation>" +
-				"<disjointness>" + disjointness + "</disjointness>" +
-				"<subclasses>" + subClasses + "</subclasses>" +
-				"</generalization>";
-				
-			case "cartographic-generalization-disjoint":
-			case "cartographic-generalization-overlapping":
-				var superName = this.get('diagrams').getAttrById(conn.sourceId, 'name');
-				var disjointness = conn.getParameter("disjointness");
-				var description = conn.getOverlay("cartographic-label").getLabel();
-				
-				var subClasses = "<subclass>" + this.get('diagrams').getAttrById(conn.targetId, 'name') + "</subclass>";
-				
-				var subConns = app.plumb.getConnections({source : conn.getOverlay("cartographic-square").getElement()});
-				for(var i=0; i<subConns.length; i++) {
-					var subName = this.get('diagrams').getAttrById(subConns[i].targetId, 'name');
-		    		subClasses += "<subclass>" + subName + "</subclass>";
-		    	}
-				
-				return "<conceptual-generalization>" +
-				"<superclass>" + superName + "</superclass>" +
-				"<scale-shape>" + description + "</scale-shape>" + 
-				"<disjointness>" + disjointness + "</disjointness>" +
-				"<subclasses>" + subClasses + "</subclasses>" +
-				"</conceptual-generalization>";
-				
-			default:
-				return "";
-			}
-		}
-
-});
-
-/*app*/
-var app = {
-	// OMT-G namespace
-	omtg : {},
-
-	msgs : {
-		DELETE_CONNECTION: "This connection will be detached. Are you sure?",
-		DELETE_DIAGRAM: "This diagram will be removed. All its connection will be detached. Are you sure?",
-		DELETE_DIAGRAMS: "The selected diagrams will be removed. All their connections will be detached. Are you sure?",
-		EMPTY_PROJECT: "Project is empty, there is nothing to export!",
-		NOT_EMPTY_PROJECT: "Project is not empty",
-	},
-};
-
-$(function () {
-	'use strict';
-
-	//Criação de model tool atraves da criação do collection tools
-	app.classTools = new Tools([
-		{ name : 'Entidade', model : 'omtgDiagram', tooltip: 'Polygon', icon: 'imgs/omtg/polygon.png'}
-	]);
-
-	//Criação de model tool atraves da criação do collection tools
-	app.relationshipTools = new Tools([
-	     { name : '1 : 1', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
-	     { name : '1 : N', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
-	     { name : 'N : 1', model : 'omtgRelation', tooltip: 'Aggregation', icon: 'imgs/relation/aggregation.png' },
-	     { name : 'N : M', model : 'omtgRelation', tooltip: 'Aggregation', icon: 'imgs/relation/aggregation.png' },
-	]);
-
-	// List of toolboxes
-	app.toolboxes = new Toolboxes([
-	     {name: "Classes", tools : app.classTools},
-	     {name: "Relationships", tools : app.relationshipTools},
-	]);	
-
-	// Canvas Model
-	app.canvas = new Canvas();
-
-	// Initialize Backbone views.
-	// TODO BodyView
-	app.navbarView = new NavbarView({el: $("#tools"), model: app.toolboxes});
-	app.canvasView = new CanvasView({el: $("#canvas"), model: app.canvas});
-	
-	/*app.canvas.get('activeTools').each(function(m){
-		alert(m.get("name")+" ativada");
-	});*/
-
-	//funcionando
-	/*app.relationshipTools.each(function(m){
-		alert(m.get("name")+" criada");
-	});*/
-});
-
-
 /*View*/
-//[DiagramView, ToolView, ToolsView, ToolboxView, NavbarView(ToolboxesView), CanvasView, ConnectioneditorView, AboutView, ContextmenuView, BodyView]
-//TODO: AttributeView, XLMimporteView
+//[DiamondView, DiagramView, ToolView, ToolsView, ToolboxView, NavbarView(ToolboxesView), AttributeView, DiagramEditorView, CanvasView, ConnectioneditorView, AboutView, ContextmenuView, BodyView, xmlImporterView]
+//TODO: newAttributeView
 //-------------------------------------------------------------------------------------------------------------
 
-BodyView = Backbone.View.extend({
+// Diamond View
+// ----------
+app.DiamondView = Backbone.View.extend({
+
+		tagName : 'div',
+
+		className : 'diagram-container',
+		
+		parentSelector : '#container', 
+				
+		events : {
+			
+			// Delete the diagram and remove its view from canvas
+			'click .badge-delete' : 'deleteDiagram',
+			
+			'click .badge-edit' : 'edit',
+			
+			// Toggle the selection of the diagram
+			'click' : 'handleClick',			
+
+		    'dblclick' : 'handleDblClick',
+		        
+		    'mouseenter' : 'handleMouseEnter',
+		    
+		    'mouseleave' : 'handleMouseLeave',
+		        
+		    'mouseup' : 'updatePosition',
+		    
+		    'contextmenu' : 'openContextMenu'
+		},
+
+		initialize : function() {
+
+			// Templates
+			//this.$diamond = $('#diamond-template');
+			//this.$georeferenced = $('#omtg-georeferenced-template');
+			this.render();
+
+			// Listeners
+			this.listenTo(this.model, 'change', this.render);
+			this.listenTo(this.model, 'destroy', this.remove);
+			this.listenTo(this.model, 'edit', this.edit);
+			this.listenTo(this.model, 'bringtofront', this.bringToFront);
+			this.listenTo(this.model, 'sendtoback', this.sendToBack);
+		},
+
+		render : function() {
+			this.$diamond = $('#diamond-template');
+
+			// use a diamond template
+			this.template = _.template(this.$diamond.html());
+			
+			// Render name and type in 'el'
+			this.$el.html(this.template(this.model.toJSON()));
+
+			//parte do toolView
+			var html = this.template(this.model.toJSON());
+			this.setElement(html);
+
+			
+			// Render attributes
+			/*var attributes = this.model.get('attributes');						
+			attributes.each(function(attribute) {				
+				var attributeView = new app.AttributeView({model : attribute});
+				this.$('.d-body > table > tbody').append(attributeView.render().el);
+			}, this);
+			*/
+			
+			// Render the `selected` state
+			if(this.model.get('selected')){
+				this.$el.addClass('selected');
+				this.$('.badge-delete').removeClass('hidden');
+				this.$('.badge-edit').removeClass('hidden');
+			}
+			else{
+				this.$el.removeClass('selected');
+			}
+			
+			// Render shadow
+			if(app.canvas.get('diagramShadow')){
+				this.$el.addClass('diagram-container-shadow');
+			}
+
+			/*
+			app.plumbUtils.repaintAllAnchors();
+			app.plumb.repaintEverything();
+			*/
+			
+			return this;
+		},
+		
+		handleClick : _.debounce(function(event) {
+			
+            if (this.doubleclicked) {
+                this.doubleclicked = false; 
+            } else {            	
+            	this.model.toggleSelected();
+            }
+        }, 200),
+        
+        handleDblClick : function(e) {
+            this.doubleclicked = true;
+            this.edit.call(this, e);
+        },
+		
+		edit : function(event) {
+			 
+			if(event && event.stopPropagation) 
+				event.stopPropagation(); 
+			
+			var hasConnections = false;
+			if(app.plumb.getConnections({ source: this.el.id }).length || app.plumb.getConnections({ target: this.el.id }).length)
+				hasConnections = true;
+		
+			var modal = new app.DiagramEditorView({model : this.model, hasConnections : hasConnections});
+		},
+		
+		deleteDiagram : function(event) {
+			if(event) 
+				event.stopPropagation(); 
+			
+			if (confirm(app.msgs.DELETE_DIAGRAM)){			
+				app.plumb.detachAllConnections(this.$el);						
+				
+				// Remove view				 
+				this.model.trigger("destroy", this.model); 
+				app.canvasView.updateHistory();
+			}
+		},
+		
+		updatePosition : function(event) {
+			var grid = app.canvas.get("snapToGrid");
+			this.model.set({
+				'left': Math.round(this.$el.position().left / grid) * grid,
+				'top' : Math.round(this.$el.position().top / grid) * grid
+			});
+						
+			var plumbConnections = app.plumb.getConnections(this.$el);
+			
+			for (var i = 0; i < plumbConnections.length; i++) {
+				app.plumbUtils.updateLabelsPosition(plumbConnections[i]);
+			}
+		},
+		
+		handleMouseEnter : function() {
+			this.$el.addClass('hovered');
+			this.$('.badge-delete').removeClass('hidden');
+			this.$('.badge-edit').removeClass('hidden');
+		},
+		
+		handleMouseLeave : function() {	
+			this.$el.removeClass('hovered');
+			this.$('.badge-delete').addClass('hidden');
+			this.$('.badge-edit').addClass('hidden');	
+		},
+
+		bringToFront : function() {
+			$(this.render().el).appendTo(this.parentSelector);
+		},
+		
+		sendToBack : function() {
+			$(this.render().el).prependTo(this.parentSelector);
+		},
+		
+		openContextMenu : function(event) { 
+			event.preventDefault();			
+			app.contextMenuView = new app.ContextMenuView({diagramView : this, left : event.pageX, top : event.pageY});
+		}
+});
+
+// Body View
+// ----------
+
+app.BodyView = Backbone.View.extend({
 
 		el: "body",
 		
@@ -636,182 +993,771 @@ BodyView = Backbone.View.extend({
 			}
 		}
 		
-	});
+});
 
-ContextMenuView = Backbone.View.extend({
+// Attribute View
+// ----------
 
-		className : 'context-menu',
-		
-		parentSelector: 'body',
-		
-		events : {
-			'click  #cmEdit' : 'editDiagram',
-			'click  #cmDelete' : 'deleteDiagram',
-			'click  #cmToFront' : 'bringToFront',
-			'click  #cmToBack' : 'sendToBack',
-			'click  #cmCopy' : 'copyDiagram',
-			'click  #cmPaste' : 'pasteDiagram',
-			'click  #cmDuplicate' : 'duplicateDiagram',
-			'click  #cmUndo' : 'undo',
-			'click  #cmRedo' : 'redo',
-			'click' : 'destroyMenu',
-			'contextmenu' : 'rightClick'
+app.AttributeView = Backbone.View.extend({
+
+		initialize : function() {
+			this.template = _.template("<tr><td><% if( isKey ){ %> <img class='attribute-key' src='imgs/omtg/key.png'> <% } %></td><td><%= attr %></td></tr>");
 		},
 
-		initialize : function(options) {		
-			
-			if(options.diagramView != null){
-				this.template = _.template($('#contextmenu-diagram-template').html());
-				this.diagramView = options.diagramView;
-			}
-			else{
-				this.template = _.template($('#contextmenu-canvas-template').html());
-				this.offsetTop = options.offsetTop;
-				this.offsetLeft = options.offsetLeft; 
-			}
-						
-			this.left = options.left;
-			this.top = options.top;			
-			
-			this.render();
-		},
-
-		render : function() {			
-			this.$el.html(this.template());   			
-			this.$el.appendTo(this.parentSelector);
-					
-			// Context menu of canvas 
-			if(this.diagramView == null){
-				
-				// set paste inactive if there is nothing on clipboard
-				if(app.canvas.get('clipboard') == null){
-					this.$('#cmPaste').parent().addClass('disabled');  
-				} 
-				
-				// set undo and redo inactive
-				var undoManager = app.canvas.get('undoManager');				
-				if(!undoManager.hasUndo())
-					this.$('#cmUndo').parent().addClass('disabled');				
-				if(!undoManager.hasRedo())
-					this.$('#cmRedo').parent().addClass('disabled');  
-			} 
-			
-			//TODO: chose position to better fit the canvas
-			this.$('.context-menu-content').css({ 
-				top: this.top + 'px', 
-				left: this.left + 'px' 
-			});	
-			
+		render : function() {
+			// TODO: include other attr fields
+			this.$el.html(this.template({
+				isKey : this.model.get('isKey'), 
+				attr : this.model.get('type') == 'VARCHAR' ? this.model.escape('name') + ': ' + this.model.get('type') + '('+ this.model.get('length') +')' : this.model.escape('name') + ': ' + this.model.get('type'),
+			}));
 			return this;
 		},
-		
-		destroyMenu: function() {				
-		    // COMPLETELY UNBIND THE VIEW
-		    this.undelegateEvents();
 
-		    this.$el.removeData().unbind(); 
+});
 
-		    // Remove view from DOM
-		    this.remove();  
-		    Backbone.View.prototype.remove.call(this);
-		},
-		
-		editDiagram : function() { 
-			this.diagramView.edit(); 
-		},
-		
-		deleteDiagram : function() {
-			this.diagramView.deleteDiagram();
-		},
-		
-		bringToFront : function() {
-			this.diagramView.bringToFront();
-		},
-		
-		sendToBack : function() {
-			this.diagramView.sendToBack(); 
-		},
-		
-		duplicateDiagram : function() {
-			app.canvas.duplicateDiagram(this.diagramView.model);
-		}, 
-		
-		copyDiagram : function() {
-			app.canvas.copyDiagram(this.diagramView.model);
-		}, 
-		
-		pasteDiagram : function(event) {
-			if(app.canvas.hasClipboard())
-				app.canvas.pasteDiagram(this.offsetTop, this.offsetLeft);
-			else
-				event.stopPropagation();
-		}, 
-		
-		rightClick : function(event) {
-			event.preventDefault();
-			this.destroyMenu(); 
-		},
-		
-		undo : function(event) {					
-			if(app.canvas.get('undoManager').hasUndo()){
-				app.canvasView.undoHistory();
-			}
-			else{
-				event.stopPropagation(); 
-			}			
-		}, 
-		
-		redo : function(event) {
-			if(app.canvas.get('undoManager').hasRedo()){
-				app.canvasView.redoHistory();
-			}
-			else{
-				event.stopPropagation(); 
-			}
-		}		
-	});
+// Attribute View
+// ----------
 
-AboutView = Backbone.View.extend({
+app.newAttributeView = Backbone.View.extend({
 
-	id : 'welcome-modal',
+	tagName : 'div',
 
-	className : 'modal fade',
+	className : 'newAttributes',
+		
+	parentSelector : '#canvas',
 
-	events : {
-		// Modal events
-		'hidden.bs.modal' : 'teardown',		
-	},
-
-	initialize : function(options) {
-						
-		this.template = _.template($('#about-template').html());
-			
-		this.render();
+	initialize : function() {
+		//carrega o template e chama render
+		this.template = _.template("<div id='qwe'><%= name %></div>");
+		this.listenTo(this.model, 'change', this.render);
 	},
 
 	render : function() {
-			
-		this.$el.html(this.template());
+		//tem o funcionamento parecido com o diagramView, pois é chamado no canvasView(diferente do attributeView que é chamado no diagrameView)
+		//o render também é similar ao do attributeView
+		//tem que ser chamado depois do update (!resolvido: o comando de captura'change' no canvas view é acionado depois do update)
+		//imprime os divs com coordenadas do diagram selecionado
+		
+		// Set position
+		this.$el.css({
+			'top': this.model.get('top'),
+			'left': this.model.get('left'),
+			//'id': this.model.get('name')
+		});			
+		
+		// Render name and type
+		this.$el.html(this.template(this.model.toJSON()));
 
-		// Modal parameters
-		this.$el.modal({
-			backdrop : 'static',
-			keyboard : true,
-			show : true,
-		});	
+		app.plumbUtils.repaintAllAnchors();
+		app.plumb.repaintEverything();
+		console.log(this.el);
+		console.log(this.$el.id);
+
+		var target1 = this.model.get('name');
+
+		if(attrCnt>0){
+			jsPlumb.connect({
+ 				source:"c39", 
+  				target: 'qwe',
+  				anchors : [ "Bottom", "Top" ],
+  				//endpoint:"Dot",
+			});
+		}
 
 		return this;
-	},
-
-	// Remove and delete from DOM the modal
-	teardown : function() {
-		this.$el.data('modal', null);
-		this.remove();
+		
 	},
 
 });
 
-ToolView = Backbone.View.extend({
+// Diagram View
+// ----------
+	
+app.DiagramView = Backbone.View.extend({
+
+		tagName : 'div',
+
+		className : 'diagram-container',
+		
+		parentSelector : '#canvas', 
+				
+		events : {
+			
+			// Delete the diagram and remove its view from canvas
+			'click .badge-delete' : 'deleteDiagram',
+			
+			'click .badge-edit' : 'edit',
+			
+			// Toggle the selection of the diagram
+			'click' : 'handleClick',			
+
+		    'dblclick' : 'handleDblClick',
+		        
+		    'mouseenter' : 'handleMouseEnter',
+		    
+		    'mouseleave' : 'handleMouseLeave',
+		        
+		    'mouseup' : 'updatePosition',
+		    
+		    'contextmenu' : 'openContextMenu'
+		},
+
+		initialize : function() {
+
+			// Templates
+			this.$conventional = $('#omtg-conventional-template');
+			this.$georeferenced = $('#omtg-georeferenced-template');
+
+			// Listeners
+			this.listenTo(this.model, 'change', this.render);
+			this.listenTo(this.model, 'destroy', this.remove);
+			this.listenTo(this.model, 'edit', this.edit);
+			this.listenTo(this.model, 'bringtofront', this.bringToFront);
+			this.listenTo(this.model, 'sendtoback', this.sendToBack);
+		},
+
+		render : function() {
+			
+			// Check the type of the diagram to use a proper template
+			if (this.model.get("type") == 'conventional') {
+				this.template = _.template(this.$conventional.html());
+			} else {
+				this.template = _.template(this.$georeferenced.html());
+			}
+			
+			// Render class id
+			this.el.id = this.model.get('id');
+
+			// Set position
+			this.$el.css({        
+				'top': this.model.get('top') + 'px',
+				'left': this.model.get('left') + 'px'
+			});
+
+			// Render name and type
+			this.$el.html(this.template(this.model.toJSON()));
+			
+			// Render attributes
+			if(!newAttribute){
+				var attributes = this.model.get('attributes');						
+				attributes.each(function(attribute) {				
+					var attributeView = new app.AttributeView({model : attribute});
+					this.$('.d-body > table > tbody').append(attributeView.render().el);
+				}, this);
+			}
+
+			/*// Render attributes
+			alert("new");
+			var newattributes = this.model.get('attributes');						
+			newattributes.each(function(attribute) {	
+				if(newAttribute){
+					alert("attr_"+attrCnt+"\nmodel: "+this.model.get('name'));
+					var newattributeView = new app.newAttributeView({model : attribute});
+					attrCnt ++;
+					this.$('.canvas').append(newattributeView.render().el);
+				}else{			
+					var attributeView = new app.AttributeView({model : attribute});
+					this.$('.d-body > table > tbody').append(attributeView.render().el);
+				}
+			}, this);
+			attrCnt = 0; */
+				
+			
+			// Render the `selected` state
+			if(this.model.get('selected')){
+				this.$el.addClass('selected');
+				this.$('.badge-delete').removeClass('hidden');
+				this.$('.badge-edit').removeClass('hidden');
+			}
+			else{
+				this.$el.removeClass('selected');
+			}
+			
+			// Render shadow
+			if(app.canvas.get('diagramShadow')){
+				this.$el.addClass('diagram-container-shadow');
+			}
+			
+			app.plumbUtils.repaintAllAnchors();
+			app.plumb.repaintEverything();
+			console.log(this.el);
+			console.log(this.$el);
+			return this;
+		},
+		
+		handleClick : _.debounce(function(event) {
+			
+            if (this.doubleclicked) {
+                this.doubleclicked = false; 
+            } else {            	
+            	this.model.toggleSelected();
+            }
+        }, 200),
+        
+        handleDblClick : function(e) {
+            this.doubleclicked = true;
+            this.edit.call(this, e);
+        },
+		
+		edit : function(event) {
+			 
+			if(event && event.stopPropagation) 
+				event.stopPropagation(); 
+			
+			var hasConnections = false;
+			if(app.plumb.getConnections({ source: this.el.id }).length || app.plumb.getConnections({ target: this.el.id }).length)
+				hasConnections = true;
+		
+			var modal = new app.DiagramEditorView({model : this.model, hasConnections : hasConnections});
+		},
+		
+		deleteDiagram : function(event) {
+			if(event) 
+				event.stopPropagation(); 
+			
+			if (confirm(app.msgs.DELETE_DIAGRAM)){			
+				app.plumb.detachAllConnections(this.$el);						
+				
+				// Remove view				 
+				this.model.trigger("destroy", this.model); 
+				app.canvasView.updateHistory();
+			}
+		},
+		
+		updatePosition : function(event) {
+			var grid = app.canvas.get("snapToGrid");
+			this.model.set({
+				'left': Math.round(this.$el.position().left / grid) * grid,
+				'top' : Math.round(this.$el.position().top / grid) * grid
+			});
+						
+			var plumbConnections = app.plumb.getConnections(this.$el);
+			
+			for (var i = 0; i < plumbConnections.length; i++) {
+				app.plumbUtils.updateLabelsPosition(plumbConnections[i]);
+			}
+
+			//update newAttributes position
+			this.model.get('attributes').each(function(attr){
+				//alert(":"+attr.get('name'));
+				
+			}, this);
+
+		},
+		
+		handleMouseEnter : function() {
+			this.$el.addClass('hovered');
+			this.$('.badge-delete').removeClass('hidden');
+			this.$('.badge-edit').removeClass('hidden');
+		},
+		
+		handleMouseLeave : function() {	
+			this.$el.removeClass('hovered');
+			this.$('.badge-delete').addClass('hidden');
+			this.$('.badge-edit').addClass('hidden');	
+		},
+
+		bringToFront : function() {
+			$(this.render().el).appendTo(this.parentSelector);
+		},
+		
+		sendToBack : function() {
+			$(this.render().el).prependTo(this.parentSelector);
+		},
+		
+		openContextMenu : function(event) { 
+			event.preventDefault();			
+			app.contextMenuView = new app.ContextMenuView({diagramView : this, left : event.pageX, top : event.pageY});
+		}
+});
+
+// OMTG Diagram Editor View
+// ----------
+
+app.DiagramEditorView = Backbone.View.extend({
+
+		id : 'diagram-editor',
+
+		className : 'modal fade',
+
+		events : {
+
+			// Modal events
+			'click #btnUpdate' : 'updateDiagram',
+			'hidden.bs.modal' : 'teardown',
+
+			// Diagram events
+			'click #ulDiagramType a' : 'selectType',
+			'input #inputDiagramName':  'inputNameChanged',
+
+			// Attributes table events
+			'click #btnAddRow' : 'newAttribute',
+			'click .btnRowDelete' : 'deleteAttribute',
+			'click .btnRowUp' : 'moveAttributeUp',
+			'click .btnRowDown' : 'moveAttributeDown',
+			'blur .name-editable' : 'editName',
+			'blur .value-editable' : 'editValue',
+			'blur .length-editable' : 'editLength',
+			'click .toggleKey': 'toggleKey',
+			'click .toggleNotNull': 'toggleNotNull',
+			'click .ulAttributeType a' : 'selectAttributeType',
+			
+			"submit" : "preventSubmission"
+		},
+
+		initialize : function(options) {
+			this.template = _.template($('#omtg-diagram-editor-template').html());
+			
+			this.hasConnections = options.hasConnections;
+			
+			// Copy of attributes
+			this.attrsClone = this.model.get('attributes').clone();
+
+			this.render();
+		},
+
+		render : function() {
+			this.$el.html(this.template(this.model.toJSON()));
+
+			// Modal parameters
+			this.$el.modal({
+				backdrop : 'static',
+				keyboard : false,
+				show : true,
+			});
+			
+			// Disable diagram type selector if diagram has connections
+			if(this.hasConnections){
+				this.$("#inputDiagramType").addClass("disabled");
+				this.$("#inputDiagramTypeToggle").addClass("disabled");
+			}
+			
+			// Render table rows
+			this.attrsClone.each(function(attr) {
+				this.addAttribute(attr);
+			}, this);
+
+			return this;
+		},
+
+		// Remove and delete from DOM the modal
+		teardown : function() {
+			this.$el.data('modal', null);
+			this.remove();
+		},
+
+		// Selected the option in the diagram type dropdown
+		selectType : function(event) {
+			var selected = this.$(event.currentTarget).html();
+			this.$('#inputDiagramType').html(selected);
+
+			var type = this.$(event.currentTarget).data('type-name');
+			this.$('#inputDiagramType').data('type-name', type);
+		},
+		
+		inputNameChanged : function(event) {
+			var name = this.$(event.currentTarget).val().trim();
+			
+			var reg = new RegExp("[a-zA-Z0-9][\w#@]{0,63}$");
+			
+			if (reg.test(name) && /\s/.test(name) == false && app.canvas.get('diagrams').findByName(name) == null) {
+			    this.$('#formDiagramName').removeClass("has-error");
+			    this.$('#btnUpdate').removeClass("disabled");
+			} else {
+				this.$('#formDiagramName').addClass("has-error");
+				this.$('#btnUpdate').addClass("disabled");
+			}			
+		}, 
+
+		updateDiagram : function() { 
+			attrCnt=0;
+
+			// Diagram type
+			var type = this.$('#inputDiagramType').data('type-name');
+			if (type) {
+				this.model.set('type', type);
+			}
+
+			// Diagram name
+			var name = this.$('#inputDiagramName').val().trim();
+			if (name) {
+				this.model.set('name', name);
+			}
+			
+			// Diagram attributes, remove empty name ones
+			for(var i=0; i<this.attrsClone.length; i++){
+				var attr = this.attrsClone.at(i);
+				if(attr.get('name') == ''){				
+					this.attrsClone.remove(attr);
+					i--;
+				}
+			}
+			this.model.set({'attributes': this.attrsClone});
+			this.model.trigger('change', this.model);
+
+			
+			
+			//this.teardown();
+		},
+
+		newAttribute : function() {
+			var top1 = this.model.get('top');
+			var left1 = this.model.get('left');
+			alert('top: '+top1+"\nleft: "+left1);
+			
+			alert('attrCnt: '+attrCnt);
+			top1+= 100 + attrCnt*20;
+			left1+= 30 + attrCnt*20;
+			attrCnt++;
+
+			var attr = new app.Attribute({top: top1, left: left1});
+			alert('top: '+attr.get('top')+"\nleft: "+attr.get('left'));
+			
+			this.addAttribute(attr);
+			app.canvas.get('attributes').add(attr);
+			this.attrsClone.add(attr);
+
+		},
+
+		addAttribute : function(attribute) {
+			var rowTemplate = _.template($('#omtg-attribute-row-editor-template').html());
+			var html = rowTemplate(attribute.toJSON());
+			this.$('#attrTable > tbody > tr:last').before(html);
+		},
+
+		deleteAttribute : function(event) {	
+			var $row = this.$(event.currentTarget).closest('tr');
+			this.attrsClone.remove(this.attrsClone.at($row.index()));
+			$row.remove();
+		},
+		
+		moveAttributeUp : function(event) {
+			var $row = this.$(event.currentTarget).closest('tr');
+
+			if ($row.index() > 0) {
+
+				var att = this.attrsClone.at($row.index());
+				this.attrsClone.remove(att);
+				this.attrsClone.add(att, {at : $row.index() - 1});
+
+				$row.insertBefore($row.prev());
+			}
+		},
+		
+		moveAttributeDown : function(event) {
+			var $row = this.$(event.currentTarget).closest('tr');
+			
+			if($row.index() < this.attrsClone.length - 1){
+				
+				var att = this.attrsClone.at($row.index()+1);
+				this.attrsClone.remove(att);
+				this.attrsClone.add(att, {at : $row.index()});
+				
+				$row.insertAfter($row.next());
+			}
+		},
+		
+		editName : function(event) {
+			var index = this.$(event.currentTarget).closest('tr').index();
+			
+			// Substitutes every space with a underscore.
+			var attrName = this.$(event.currentTarget).text();
+			attrName = attrName.replace(/\s+/g, '_');
+			this.attrsClone.at(index).set('name', attrName);
+		},
+		
+		editValue : function(event) {
+			var index = this.$(event.currentTarget).closest('tr').index();
+			this.attrsClone.at(index).set('defaultValue', this.$(event.currentTarget).text());
+		},
+		
+		editLength : function(event) {
+			var index = this.$(event.currentTarget).closest('tr').index();
+			
+			// Check if length is number and bigger than or equal to 1.
+			var length = this.$(event.currentTarget).text();
+			this.attrsClone.at(index).set('length', length>=1 ? length : '50');
+		},
+		
+		toggleKey : function(event) {
+			var index = this.$(event.currentTarget).closest('tr').index();
+			this.attrsClone.at(index).set('isKey', this.$(event.currentTarget).prop('checked') );
+		},
+		
+		toggleNotNull : function(event) {
+			var index = this.$(event.currentTarget).closest('tr').index();
+			this.attrsClone.at(index).set('isNotNull', this.$(event.currentTarget).prop('checked') );
+		},
+		
+		selectAttributeType : function(event) {
+			var index = this.$(event.currentTarget).closest('tr').index();
+			
+			var selected = this.$(event.currentTarget).text().trim();
+			this.$(event.currentTarget).parent().parent().siblings('button.btnAttributeType:first').html(selected + ' <span class="caret"></span>');
+			
+			this.attrsClone.at(index).set('type', selected );
+			
+			// Make length field editable if varchar is selected
+			if(selected == 'VARCHAR'){
+				this.$(event.currentTarget).parent().parent().parent().parent().siblings('td.length-editable').attr('contenteditable','true');
+				this.$(event.currentTarget).parent().parent().parent().parent().siblings('td.length-editable').text('50');
+				this.attrsClone.at(index).set('length', '50');
+			}
+			else{
+				this.$(event.currentTarget).parent().parent().parent().parent().siblings('td.length-editable').text('');
+				this.$(event.currentTarget).parent().parent().parent().parent().siblings('td.length-editable').attr('contenteditable','false');
+			}
+		},
+		
+		// Avoid form submission on enter
+		preventSubmission : function(event) {
+			event.preventDefault();
+		}
+});
+
+// OMTG Connection Editor View
+// ----------
+
+app.ConnectionEditorView = Backbone.View.extend({
+
+		id : 'connection-editor',
+
+		className : 'modal fade',
+
+		events : {
+			// Modal events
+			'click #btnUpdate' : 'update',
+			'click #btnDelete' : 'detach',
+			'hidden.bs.modal' : 'teardown',	
+			
+			'click #ulConnectionSpatialRelation a' : 'selectSpatialRelation',
+			
+			"submit" : "preventSubmission",
+		},
+
+		initialize : function(options) {
+						
+			this.template = _.template($('#omtg-connection-editor-template').html());			
+			this.connection = options.connection;
+			
+			this.render();
+		},
+
+		render : function() {
+			
+			this.$el.html(this.template());
+			var fieldset = this.$('#connection-editor-form > fieldset');
+						
+			var type = this.connection.getType()[0];
+			
+			// Add Spatial Relation component
+			if(type == 'spatial-association'){
+				
+				fieldset.append(_.template($('#omtg-connection-editor-spatial-relation-template').html()));				
+				this.descriptionLabel = this.connection.getOverlay("description-label");			
+				
+				var sourceType = app.canvas.get('diagrams').getAttrById(this.connection.sourceId, 'type');
+				var targetType = app.canvas.get('diagrams').getAttrById(this.connection.targetId, 'type');
+				
+				if(sourceType != "polygon" && sourceType != "planar-subdivision"){
+					this.$("#contains").addClass('disabled');
+					this.$("#containsproperly").addClass('disabled');
+				}
+				
+				if(targetType != "polygon" && targetType != "planar-subdivision"){
+					this.$("#within").addClass('disabled');
+				}
+				
+				var spatialRelation = this.descriptionLabel.getLabel().split(" ")[0];				
+				
+				if(spatialRelation){
+					this.$('#inputConnectionSpatialRelation').data('spatialrelation', spatialRelation);
+					this.$('#inputConnectionSpatialRelation').html(spatialRelation);
+				}
+				else{
+					this.$('#inputConnectionSpatialRelation').data('spatialrelation', 'Intersects');
+					this.$('#inputConnectionSpatialRelation').html('Intersects');
+				}
+				
+				if(spatialRelation.toLowerCase() == 'near' || spatialRelation.toLowerCase() == 'distant'){
+					this.$('#inputConnectionDistance').prop("disabled", false);
+					this.$('#inputConnectionDistance').val(this.connection.getParameter("distance"));
+				}
+			}
+			
+			// Add Description component
+			if(type == 'association' || type == 'arc-network' || type == 'arc-network-self'){
+				fieldset.append(_.template($('#omtg-connection-editor-description-template').html()));
+				
+				this.descriptionLabel = this.connection.getOverlay("description-label");			
+				this.$('#inputConnectionDescription').val(this.descriptionLabel.getLabel());
+			}
+			
+			// Add Cardinalities component
+			if(type == 'association' || type == 'spatial-association'){ 
+				fieldset.append(_.template($('#omtg-connection-editor-cardinalities-template').html()));
+				
+				var aName = app.canvas.get('diagrams').getAttrById(this.connection.sourceId, 'name');
+				var bName = app.canvas.get('diagrams').getAttrById(this.connection.targetId, 'name');
+				
+				this.$('#CardA-label').text("Cardinality A ("+ aName + "):");
+				this.cardLabelA = this.connection.getOverlay("cardinality-labelA");			
+				this.$('#inputMinA').val(this.connection.getParameter("minA"));
+				this.$('#inputMaxA').val(this.connection.getParameter("maxA"));
+				
+				this.$('#CardB-label').text("Cardinality B ("+ bName + "):");
+				this.cardLabelB = this.connection.getOverlay("cardinality-labelB");			
+				this.$('#inputMinB').val(this.connection.getParameter("minB"));
+				this.$('#inputMaxB').val(this.connection.getParameter("maxB"));
+			} 
+			
+			// Add Cartographic component
+			if(type == 'cartographic-generalization-disjoint' || type == 'cartographic-generalization-overlapping'){
+				fieldset.append(_.template($('#omtg-connection-editor-cartographic-template').html()));
+				
+				this.cartographicLabel = this.connection.getOverlay("cartographic-label");
+				if(this.cartographicLabel.getLabel() == 'scale') 
+					this.$('#scaleRadio').prop("checked", true);
+				else
+					this.$('#shapeRadio').prop("checked", true);
+			}
+
+			// Modal parameters
+			this.$el.modal({
+				backdrop : 'static',
+				keyboard : false,
+				show : true,
+			});	
+
+			return this;
+		},
+
+		// Remove and delete from DOM the modal
+		teardown : function() {
+			this.$el.data('modal', null);
+			this.remove();
+		},
+
+		update : function() {
+			
+			var type = this.connection.getType()[0];
+			var spatialRelation;
+			
+			// Spatial connection description
+			if(type == 'spatial-association'){
+				spatialRelation = this.$('#inputConnectionSpatialRelation').data('spatialrelation');
+				
+				if(spatialRelation.toLowerCase() == 'near' || spatialRelation.toLowerCase() == 'distant'){
+					var dist = this.$('#inputConnectionDistance').val().trim();
+					
+					// Check if distance is number and available, if not set 10 as default.
+					if(!dist || !(dist>=0))
+						dist = 10;
+					
+					this.connection.setParameter("distance", dist);
+					this.descriptionLabel.setLabel(spatialRelation + ' (' + dist + ')');
+				}	
+				else{
+					this.descriptionLabel.setLabel(spatialRelation);
+				}
+			}
+			
+			// Connection description
+			if(type == 'association' || type == 'arc-network' || type == 'arc-network-self'){
+				var description = this.$('#inputConnectionDescription').val().trim();
+				this.descriptionLabel.setLabel(description);
+			}
+			
+			if(type == 'association' || type == 'spatial-association'){
+				// Connection cardinality A
+				var minA = this.$('#inputMinA').val().trim();
+				var maxA = this.$('#inputMaxA').val().trim();
+				minA = minA >= 0 && minA != ""  ? minA : '0';
+				maxA = maxA >= 1 && maxA != "" && minA <= maxA ? maxA : '*';
+				this.cardLabelA.setLabel(this.concatCardLabel(minA, maxA));
+
+				// Connection cardinality B
+				var minB = this.$('#inputMinB').val().trim();
+				var maxB = this.$('#inputMaxB').val().trim();
+				minB = minB >= 0 && minB != ""  ? minB : '0';
+				maxB = maxB >= 1 && maxB != "" && minB <= maxB ? maxB : '*';
+				this.cardLabelB.setLabel(this.concatCardLabel(minB, maxB));			
+			
+				// Save in the connection parameters
+				this.connection.setParameter("minA", minA);
+				this.connection.setParameter("maxA", maxA);
+				this.connection.setParameter("minB", minB);
+				this.connection.setParameter("maxB", maxB);
+				
+				app.plumbUtils.updateLabelsPosition(this.connection);
+			}
+			
+			if(type == 'cartographic-generalization-disjoint' || type == 'cartographic-generalization-overlapping'){
+				this.cartographicLabel.setLabel(this.$('input:radio[name=inlineRadioOptions]:checked').val());
+			}
+			
+			app.plumbUtils.updateLabelsPosition(this.connection);
+			
+			// Update undo history
+			app.canvasView.updateHistory();
+		},
+		
+		detach : function(event) {
+			
+			if (confirm(app.msgs.deleteConnection)){
+				
+				var type = this.connection.getType()[0];
+
+				// Detach leg connections of the cartographic
+				if(type == 'cartographic-generalization-disjoint' || type == 'cartographic-generalization-overlapping'){
+					app.plumb.detachAllConnections(this.connection.getOverlay("cartographic-square").getElement());		
+				}
+				else if(type == 'arc-network' || type == 'arc-network-sibling' || type == 'arc-network-self' || type == 'arc-network-sibling-self'){
+					var sibling = this.connection.getParameter("sibling");
+					app.plumb.detach(sibling);
+				}
+				
+				app.plumb.detach(this.connection);
+				
+				//this.teardown();
+			}
+		},
+		
+		concatCardLabel : function(min, max){
+
+			if(min == max)
+				return min;
+
+			return min + ".." + max;
+		},
+		
+		// Selected the option in the diagram type dropdown
+		selectSpatialRelation : function(event) {
+			var selected = this.$(event.currentTarget).html();
+			this.$('#inputConnectionSpatialRelation').html(selected);
+
+			var spatialrelation = this.$(event.currentTarget).data('spatialrelation').trim();
+			this.$('#inputConnectionSpatialRelation').data('spatialrelation', spatialrelation);
+			
+			if(spatialrelation.toLowerCase() == 'near' || spatialrelation.toLowerCase() == 'distant'){
+				this.$('#inputConnectionDistance').prop("disabled", false);
+				this.$('#inputConnectionDistance').val(this.connection.getParameter("distance"));
+			}
+			else{
+				this.$('#inputConnectionDistance').prop("disabled", true);
+				this.$('#inputConnectionDistance').val("");
+				this.connection.setParameter("distance", "");
+			}
+		},
+		
+		// Avoid form submission on enter
+ 		preventSubmission : function(event) {
+ 			event.preventDefault();
+  		}
+
+});
+
+app.ToolView = Backbone.View.extend({
 
 	events : {
 		'click' : 'clicked',
@@ -848,14 +1794,14 @@ ToolView = Backbone.View.extend({
 	},
 });
 
-ToolsView = Backbone.View.extend({
+app.ToolsView = Backbone.View.extend({
 
 	render : function() {
 		//alert("tools view");
 		this.$el.empty();
 
 		this.model.each(function(tool) {
-			var toolView = new ToolView({
+			var toolView = new app.ToolView({
 				model : tool
 			});
 			this.$el.append(toolView.render().el);
@@ -865,7 +1811,7 @@ ToolsView = Backbone.View.extend({
 	}
 });
 
-ToolboxView = Backbone.View.extend({
+app.ToolboxView = Backbone.View.extend({
 
 	tagName : "ul",
 
@@ -880,7 +1826,7 @@ ToolboxView = Backbone.View.extend({
 		//alert("teste");
 		this.$el.html(this.template(this.model.toJSON()));
 
-		var toolsView = new ToolsView({
+		var toolsView = new app.ToolsView({
 			model : this.model.get('tools')
 		});
 		toolsView.$el = this.$('.dropdown-menu');
@@ -891,7 +1837,7 @@ ToolboxView = Backbone.View.extend({
 });
 
 //subistitui o toolboxesView e chama o toolboxView
-NavbarView = Backbone.View.extend({
+app.NavbarView = Backbone.View.extend({
 
 	events : {
 		"click #btnEntidade" : "btnEntidade",
@@ -902,476 +1848,360 @@ NavbarView = Backbone.View.extend({
 		this.render();
 	},
 
-	render : function() {
+	/*render : function() {
 		//this.$el.empty();
 		
 		var self = this;
 
 		this.model.each(function(toolbox) {
-
-			var toolboxView = new ToolboxView({
+			var toolboxView = new app.ToolboxView({
 				model : toolbox
 			});
 			
 			self.$el.append(toolboxView.render().$el);
 		});
-	},
-
-	btnEntidade : function(e){
-		//alert("botão acionado");
-
-		this.model.each(function(tool){
-			if(tool.get('name')=='entidade'){
-				//alert('oi');
-				tool.toggleActive();
-			}
-		});
-	},	
-});
-
-CanvasView = Backbone.View.extend({
-		
-	events : {
-		'click' : 'clicked',
-		
-		//'contextmenu' : 'openContextMenu'
-	},
-
-	initialize : function() {
-		//alert("a");
-		this.listenTo(this.model.get('diagrams'), 'add', this.addDiagram);
-		this.listenTo(this.model.get('diagrams'), 'change', this.updateHistory);
-		this.listenTo(this.model, 'change:activeTool', this.setCursor);
-		this.listenTo(this.model, 'change:grid', this.toggleGrid);
-		//this.listenTo(this.model, 'change:diagramShadow', this.toggleDiagramShadow);
-		this.listenTo(this.model, 'updateHistory', this.updateHistory);
-	},
-		
-	clearCanvas : function() {
-		app.plumb.detachEveryConnection({fireEvent : false});
-		app.plumb.deleteEveryEndpoint();
-		this.model.get('diagrams').removeAll();
-	},
-
-	updateHistory : function() {
-		this.model.get('undoManager').update();
-	},
-		
-	redoHistory : function() { 
-		var undoManager = this.model.get('undoManager');
-			
-		if(undoManager.hasRedo()){
-			this.clearCanvas(); 
-			
-			var xml = undoManager.redo();
-			if(xml)
-				app.XMLParser.parseOMTGSchema(xml);
-		}
-	},
-		
-	undoHistory : function() {
-		var undoManager = this.model.get('undoManager');
-			
-		if(undoManager.hasUndo()){
-			this.clearCanvas();  
-			
-			var xml = undoManager.undo();
-			if(xml)
-				app.XMLParser.parseOMTGSchema(xml);
-		}
-	},
-		
-	clicked : function(event) { 
-		
-		if (event && event.target && !$(event.target).is('.canvas')) 
-			return;
-
-		var tool = this.model.get('activeTool');
-
-		if (tool) {				
-			var grid = app.canvas.get("snapToGrid");				
-			if (tool.get('model') == 'omtgDiagram') {
-				var diagram = new Diagram({
-					'type' : tool.get('name'),
-					'left' : Math.round(event.offsetX / grid) * grid,
-					'top' : Math.round(event.offsetY / grid) * grid
-				});
-				this.model.get('diagrams').add(diagram); 
-			  	this.updateHistory(); 
-			}
-			tool.toggleActive();
-			this.model.set('activeTool', null);
-		}
-			
-		this.model.get('diagrams').unselectAll();
-	},
-
-	setCursor : function() {			
-		var tool = this.model.get('activeTool');
-
-		if (tool && tool.get('model') == 'omtgDiagram') {
-			this.$el.css("cursor", "copy");
-		}else{
-			this.$el.css("cursor", "default");
-		}			
-	},		
-		
-	toggleGrid : function() {		
-			
-		if(this.model.get('grid')){
-			this.$el.addClass('canvas-background');
-		}else{
-			this.$el.removeClass('canvas-background');
-		}
-	},	
-		
-	toggleDiagramShadow : function() {	
-		
-		if(this.model.get('diagramShadow')){
-			this.$el.find('.diagram-container').addClass('diagram-container-shadow');
-		}else{
-			this.$el.find('.diagram-container').removeClass('diagram-container-shadow');
-		}
-	},	
-		
-	addDiagram : function(diagram) { 
-		alert("a");
-		app.plumb.setSuspendDrawing(true);			
-			
-		var diagramView = new DiagramView({
-			model : diagram
-		});
-			
-		var dObject = diagramView.render().el;
-		this.$el.append(dObject);
-			
-		//Plumbing			
-		app.plumb.draggable(dObject, {
-			containment : '#canvas',
-			scroll : true,
-			drag:function(e,ui) {
-				// TODO: remove this drag function and repaint for performance reasons
-				if($(".cartographic-square").length > 0)
-					app.plumb.repaintEverything();
-			}
-		});
-			
-		app.plumb.makeSource(dObject, {
-			filter : function() {
-				var tool = app.canvas.get('activeTool');
-				return tool != null && tool.get('model') == 'omtgRelation';
-			}
-		});
-			
-		app.plumb.makeTarget(dObject);	
-		app.plumb.setSuspendDrawing(false, true);
-	},
-		
-	print : function(){
-		this.model.get('diagrams').unselectAll();
-		
-		this.$el.children().printThis({
-			debug: false,
-			importCSS: true, 
-	        importStyle: false,        
-			printContainer: true
-		});
-	},
-		
-	openContextMenu : function(event) { 
-			
-		if (event && event.target && !$(event.target).is('.canvas')) 
-			return; 
-
-		event.preventDefault();			
-			
-		app.contextMenuView = new app.ContextMenuView({left : event.pageX, top : event.pageY, offsetTop : event.offsetY, offsetLeft : event.offsetX});
-	}
-});
-
-DiagramView = Backbone.View.extend({
-
-	tagName : 'div',
-
-	className : 'diagram-container',
-		
-	parentSelector : '#canvas', 
-				
-	events : {
-			
-		// Delete the diagram and remove its view from canvas
-		'click .badge-delete' : 'deleteDiagram',
-			
-		'click .badge-edit' : 'edit',
-			
-		// Toggle the selection of the diagram
-		'click' : 'handleClick',			
-
-	    'dblclick' : 'handleDblClick',
-		        
-	    'mouseenter' : 'handleMouseEnter',
-		    
-	    'mouseleave' : 'handleMouseLeave',
-		        
-	    'mouseup' : 'updatePosition',
-		    
-	    'contextmenu' : 'openContextMenu'
-	},
-
-	initialize : function() {
-
-		// Templates
-		this.$conventional = $('#omtg-conventional-template');
-		this.$georeferenced = $('#omtg-georeferenced-template');
-
-		// Listeners
-		this.listenTo(this.model, 'change', this.render);
-		this.listenTo(this.model, 'destroy', this.remove);
-		this.listenTo(this.model, 'edit', this.edit);
-		this.listenTo(this.model, 'bringtofront', this.bringToFront);
-		this.listenTo(this.model, 'sendtoback', this.sendToBack);
-	},
-
+	},*/
 	render : function() {
-			
-		// Check the type of the diagram to use a proper template
-		if (this.model.get("type") == 'conventional') {
-			this.template = _.template(this.$conventional.html());
-		} else {
-			this.template = _.template(this.$georeferenced.html());
-		}
-			
-		// Render class id
-		this.el.id = this.model.get('id');
-		
-		// Set position
-		this.$el.css({        
-			'top': this.model.get('top') + 'px',
-			'left': this.model.get('left') + 'px'
-		});			
-			
-		// Render name and type
-		this.$el.html(this.template(this.model.toJSON()));
-			
-			
-		// Render attributes
-		/*var attributes = this.model.get('attributes');						
-		attributes.each(function(attribute) {				
-			var attributeView = new app.omtg.AttributeView({model : attribute});
-			this.$('.d-body > table > tbody').append(attributeView.render().el);
-		}, this);*/
-			
-			
-		// Render the `selected` state
-		if(this.model.get('selected')){
-			this.$el.addClass('selected');
-			this.$('.badge-delete').removeClass('hidden');
-			this.$('.badge-edit').removeClass('hidden');
-		}else{
-			this.$el.removeClass('selected');
-		}
-			
-		// Render shadow
-		if(app.canvas.get('diagramShadow')){
-			this.$el.addClass('diagram-container-shadow');
-		}
-			
-		app.plumbUtils.repaintAllAnchors();
-		app.plumb.repaintEverything();
-			
-		return this;
-	},
-		
-	handleClick : _.debounce(function(event) {
-		
-        if (this.doubleclicked) {
-            this.doubleclicked = false; 
-        } else {            	
-           	this.model.toggleSelected();
-        }
-    }, 200),
-        
-    handleDblClick : function(e) {
-        this.doubleclicked = true;
-        this.edit.call(this, e);
-    },
-		
-	edit : function(event) {
-		 
-		if(event && event.stopPropagation) 
-			event.stopPropagation(); 
-			
-		var hasConnections = false;
-		if(app.plumb.getConnections({ source: this.el.id }).length || app.plumb.getConnections({ target: this.el.id }).length)
-			hasConnections = true;
-		
-		var modal = new app.omtg.DiagramEditorView({model : this.model, hasConnections : hasConnections});
-	},
-		
-	deleteDiagram : function(event) {
-		if(event) 
-			event.stopPropagation(); 
-			
-		if (confirm(app.msgs.DELETE_DIAGRAM)){			
-			app.plumb.detachAllConnections(this.$el);						
-				
-			// Remove view				 
-			this.model.trigger("destroy", this.model); 
-			app.canvasView.updateHistory();
-		}
-	},
-		
-	updatePosition : function(event) {
-		var grid = app.canvas.get("snapToGrid");
-		this.model.set({
-			'left': Math.round(this.$el.position().left / grid) * grid,
-			'top' : Math.round(this.$el.position().top / grid) * grid
-		});
-						
-		var plumbConnections = app.plumb.getConnections(this.$el);
-			
-		for (var i = 0; i < plumbConnections.length; i++) {
-			app.plumbUtils.updateLabelsPosition(plumbConnections[i]);
-		}
-	},
-		
-	handleMouseEnter : function() {
-		this.$el.addClass('hovered');
-		this.$('.badge-delete').removeClass('hidden');
-		this.$('.badge-edit').removeClass('hidden');
-	},
-		
-	handleMouseLeave : function() {	
-		this.$el.removeClass('hovered');
-		this.$('.badge-delete').addClass('hidden');
-		this.$('.badge-edit').addClass('hidden');	
-	},
+			this.$el.empty();
 
-	bringToFront : function() {
-		$(this.render().el).appendTo(this.parentSelector);
-	},
-		
-	sendToBack : function() {
-		$(this.render().el).prependTo(this.parentSelector);
-	},
-		
-	openContextMenu : function(event) { 
-		event.preventDefault();			
-		app.contextMenuView = new app.ContextMenuView({diagramView : this, left : event.pageX, top : event.pageY});
-	}
+			this.model.each(function(toolbox) {
+				var toolboxView = new app.ToolboxView({
+					model : toolbox
+				});
+				this.$el.append(toolboxView.render().el);
+			}, this);
+
+		}
+	
 });
 
-ConnectionEditorView = Backbone.View.extend({
+// XML Importer View
+// ----------
 
-		id : 'connection-editor',
+app.XMLImporterView = Backbone.View.extend({
+
+		id : 'xml-importer',
 
 		className : 'modal fade',
-
+		
 		events : {
+
 			// Modal events
-			'click #btnUpdate' : 'update',
-			'click #btnDelete' : 'detach',
-			'hidden.bs.modal' : 'teardown',	
+			'click #btnImport' : 'importXML',
 			
-			'click #ulConnectionSpatialRelation a' : 'selectSpatialRelation',
+			'hidden.bs.modal' : 'teardown',
 			
-			"submit" : "preventSubmission",
+			'change #js-upload-files' : 'uploadFile',
+			
+			'load #js-upload-files' : 'importXML'
 		},
 
 		initialize : function(options) {
-						
-			this.template = _.template($('#omtg-connection-editor-template').html());			
-			this.connection = options.connection;
-			
+			this.template = _.template($('#xmlimporter-template').html());
 			this.render();
 		},
 
 		render : function() {
-			
 			this.$el.html(this.template());
-			var fieldset = this.$('#connection-editor-form > fieldset');
-						
-			var type = this.connection.getType()[0];
+
+			// Modal parameters
+			this.$el.modal({
+				backdrop : 'static',
+				keyboard : false,
+				show : true
+			});
+
+			return this;
+		},
+
+		// Remove and delete from DOM the modal
+		teardown : function() {
+			this.$el.data('modal', null);
+			this.remove();
+		},
+		
+		uploadFile : function(evt) {
 			
-		// Add Spatial Relation component
-		if(type == 'spatial-association'){
-				
-			fieldset.append(_.template($('#omtg-connection-editor-spatial-relation-template').html()));				
-			this.descriptionLabel = this.connection.getOverlay("description-label");			
-				
-			var sourceType = app.canvas.get('diagrams').getAttrById(this.connection.sourceId, 'type');
-			var targetType = app.canvas.get('diagrams').getAttrById(this.connection.targetId, 'type');
-				
-			if(sourceType != "polygon" && sourceType != "planar-subdivision"){
-				this.$("#contains").addClass('disabled');
-				this.$("#containsproperly").addClass('disabled');
+			var file = evt.target.files[0];			
+			var reader = new FileReader();
+			var self = this;
+
+			reader.readAsText(file);
+
+			reader.onload = function() {
+				$.ajax({
+					url : "XMLImporter",
+					type : "POST",
+					data : reader.result,
+					contentType : "application/json; charset=UTF-8",
+					complete : function(e, xhr, settings) {					
+						self.allowImport(e.status);
+						self.validXML = reader.result;
+					}
+				});				
+			};			
+		},
+
+		importXML : function() {
+			var parser = app.XMLParser;
+			
+			parser.parseOMTGSchema(this.validXML);
+			
+			app.canvasView.updateHistory();
+			
+			this.teardown();
+		},
+		
+		allowImport : function(status) {
+			if(status == 202){
+				this.$("#btnImport").removeClass("disabled");
 			}
+			else {
+				this.$("#btnImport").addClass("disabled");
+			}
+		}
+		
+});
+
+// Canvas View
+// ----------
+
+app.CanvasView = Backbone.View.extend({
+		
+		events : {
+			'click' : 'clicked',
+			
+			'contextmenu' : 'openContextMenu'
+		},
+
+		initialize : function() {
+			this.listenTo(this.model.get('diagrams'), 'add', this.addDiagram);
+			this.listenTo(this.model.get('attributes'), 'add', this.addNewAttr);
+			this.listenTo(this.model.get('diagrams'), 'change', this.updateHistory);
+			this.listenTo(this.model, 'change:activeTool', this.setCursor);
+			this.listenTo(this.model, 'change:grid', this.toggleGrid);
+			this.listenTo(this.model, 'change:diagramShadow', this.toggleDiagramShadow);
+			this.listenTo(this.model, 'updateHistory', this.updateHistory);
+		},
+		
+		clearCanvas : function() {
+			app.plumb.detachEveryConnection({fireEvent : false});
+			app.plumb.deleteEveryEndpoint();
+			this.model.get('diagrams').removeAll();
+		},
+
+		updateHistory : function() {
+			this.model.get('undoManager').update();
+		},
+		
+		redoHistory : function() { 
+
+			var undoManager = this.model.get('undoManager');
+			
+			if(undoManager.hasRedo()){
+				this.clearCanvas(); 
 				
-			if(targetType != "polygon" && targetType != "planar-subdivision"){
-				this.$("#within").addClass('disabled');
+				var xml = undoManager.redo();
+				if(xml)
+					app.XMLParser.parseOMTGSchema(xml);
+			}
+		},
+		
+		undoHistory : function() {
+
+			var undoManager = this.model.get('undoManager');
+			
+			if(undoManager.hasUndo()){
+				this.clearCanvas();  
+				
+				var xml = undoManager.undo();
+				if(xml)
+					app.XMLParser.parseOMTGSchema(xml);
+			}
+		},
+		
+		clicked : function(event) { 
+		
+			if (event && event.target && !$(event.target).is('.canvas')) 
+				return;
+
+			var tool = this.model.get('activeTool');
+
+			if (tool) {				
+				var grid = app.canvas.get("snapToGrid");				
+				if (tool.get('model') == 'omtgDiagram') {
+					var diagram = new app.Diagram({
+						'type' : tool.get('name'),
+						'left' : Math.round(event.offsetX / grid) * grid,
+						'top' : Math.round(event.offsetY / grid) * grid
+					});
+					this.model.get('diagrams').add(diagram); 
+					this.updateHistory(); 
+				}
+				tool.toggleActive();
+				this.model.set('activeTool', null);
 			}
 			
-			var spatialRelation = this.descriptionLabel.getLabel().split(" ")[0];				
+			this.model.get('diagrams').unselectAll();
+		},
+
+		setCursor : function() {			
 			
-			if(spatialRelation){
-				this.$('#inputConnectionSpatialRelation').data('spatialrelation', spatialRelation);
-				this.$('#inputConnectionSpatialRelation').html(spatialRelation);
+			var tool = this.model.get('activeTool');
+
+			if (tool && tool.get('model') == 'omtgDiagram') {
+				this.$el.css("cursor", "copy");
 			}
 			else{
-				this.$('#inputConnectionSpatialRelation').data('spatialrelation', 'Intersects');
-				this.$('#inputConnectionSpatialRelation').html('Intersects');
+				this.$el.css("cursor", "default");
+			}			
+		},		
+		
+		toggleGrid : function() {		
+			
+			if(this.model.get('grid')){
+				this.$el.addClass('canvas-background');
 			}
-				
-			if(spatialRelation.toLowerCase() == 'near' || spatialRelation.toLowerCase() == 'distant'){
-				this.$('#inputConnectionDistance').prop("disabled", false);
-				this.$('#inputConnectionDistance').val(this.connection.getParameter("distance"));
+			else{
+				this.$el.removeClass('canvas-background');
 			}
+		},	
+		
+		toggleDiagramShadow : function() {	
+			
+			if(this.model.get('diagramShadow')){
+				this.$el.find('.diagram-container').addClass('diagram-container-shadow');
+			}
+			else{
+				this.$el.find('.diagram-container').removeClass('diagram-container-shadow');
+			}
+		},	
+		
+		addDiagram : function(diagram) {
+			
+			app.plumb.setSuspendDrawing(true);			
+			
+			var diagramView = new app.DiagramView({
+				model : diagram
+			});
+			
+			var dObject = diagramView.render().el;
+			//alert("before adddiagram");
+			this.$el.append(dObject);
+			//alert("adddiagram");
+			
+			//Plumbing			
+			app.plumb.draggable(dObject, {
+				containment : '#canvas',
+				scroll : true,
+				drag:function(e,ui) {
+					// TODO: remove this drag function and repaint for performance reasons
+					if($(".cartographic-square").length > 0)
+						app.plumb.repaintEverything();
+				}
+			});
+			
+			app.plumb.makeSource(dObject, {
+				filter : function() {
+					var tool = app.canvas.get('activeTool');
+					return tool != null && tool.get('model') == 'omtgRelation';
+				}
+			});
+
+			app.plumb.makeTarget(dObject);
+
+			app.plumb.setSuspendDrawing(false, true);
+		},
+
+		addNewAttr : function(attribute) {
+			
+			app.plumb.setSuspendDrawing(true);			
+			alert('1');
+			var newAttributeView = new app.newAttributeView({
+				model : attribute
+			});
+			alert('3');
+
+			var dObject = newAttributeView.render().el;
+			this.$el.append(dObject);
+			
+			//Plumbing			
+			app.plumb.draggable(dObject, {
+				containment : '#canvas',
+				scroll : true,
+				drag:function(e,ui) {
+					// TODO: remove this drag function and repaint for performance reasons
+					if($(".cartographic-square").length > 0)
+						app.plumb.repaintEverything();
+				}
+			});
+			
+			app.plumb.makeSource(dObject/*, {
+				filter : function() {
+					var tool = app.canvas.get('activeTool');
+					return tool != null && tool.get('model') == 'omtgRelation';
+				}
+			}*/);
+			
+			app.plumb.makeTarget(dObject);
+
+			app.plumb.setSuspendDrawing(false, true);
+			//app.canvas.get('attributes').add(attr);
+		},
+		
+		print : function(){
+			this.model.get('diagrams').unselectAll();
+			
+			this.$el.children().printThis({
+				debug: false,
+				importCSS: true, 
+		        importStyle: false,        
+				printContainer: true
+			});
+		},
+		
+		openContextMenu : function(event) { 
+			
+			if (event && event.target && !$(event.target).is('.canvas')) 
+				return; 
+
+			event.preventDefault();			
+			
+			app.contextMenuView = new app.ContextMenuView({left : event.pageX, top : event.pageY, offsetTop : event.offsetY, offsetLeft : event.offsetX});
 		}
-			
-		// Add Description component
-		if(type == 'association' || type == 'arc-network' || type == 'arc-network-self'){
-			fieldset.append(_.template($('#omtg-connection-editor-description-template').html()));
-			
-			this.descriptionLabel = this.connection.getOverlay("description-label");			
-			this.$('#inputConnectionDescription').val(this.descriptionLabel.getLabel());
-		}
-			
-		// Add Cardinalities component
-		if(type == 'association' || type == 'spatial-association'){ 
-			fieldset.append(_.template($('#omtg-connection-editor-cardinalities-template').html()));
-			
-			var aName = app.canvas.get('diagrams').getAttrById(this.connection.sourceId, 'name');
-			var bName = app.canvas.get('diagrams').getAttrById(this.connection.targetId, 'name');
-			
-			this.$('#CardA-label').text("Cardinality A ("+ aName + "):");
-			this.cardLabelA = this.connection.getOverlay("cardinality-labelA");			
-			this.$('#inputMinA').val(this.connection.getParameter("minA"));
-			this.$('#inputMaxA').val(this.connection.getParameter("maxA"));
-			
-			this.$('#CardB-label').text("Cardinality B ("+ bName + "):");
-			this.cardLabelB = this.connection.getOverlay("cardinality-labelB");			
-			this.$('#inputMinB').val(this.connection.getParameter("minB"));
-			this.$('#inputMaxB').val(this.connection.getParameter("maxB"));
-		} 
-	
-		// Add Cartographic component
-		if(type == 'cartographic-generalization-disjoint' || type == 'cartographic-generalization-overlapping'){
-			fieldset.append(_.template($('#omtg-connection-editor-cartographic-template').html()));
-				
-			this.cartographicLabel = this.connection.getOverlay("cartographic-label");
-			if(this.cartographicLabel.getLabel() == 'scale') 
-				this.$('#scaleRadio').prop("checked", true);
-			else
-				this.$('#shapeRadio').prop("checked", true);
-		}
+});
+
+// About View
+// ----------
+
+app.AboutView = Backbone.View.extend({
+
+	id : 'welcome-modal',
+
+	className : 'modal fade',
+
+	events : {
+		// Modal events
+		'hidden.bs.modal' : 'teardown',		
+	},
+
+	initialize : function(options) {
+					
+		this.template = _.template($('#about-template').html());
+		
+		this.render();
+	},
+
+	render : function() {
+		
+		this.$el.html(this.template());
 
 		// Modal parameters
 		this.$el.modal({
 			backdrop : 'static',
-			keyboard : false,
+			keyboard : true,
 			show : true,
 		});	
-
 		return this;
 	},
 
@@ -1380,139 +2210,154 @@ ConnectionEditorView = Backbone.View.extend({
 		this.$el.data('modal', null);
 		this.remove();
 	},
+});
 
-	update : function() {
-			
-		var type = this.connection.getType()[0];
-		var spatialRelation;
-				
-		// Spatial connection description
-		if(type == 'spatial-association'){
-			spatialRelation = this.$('#inputConnectionSpatialRelation').data('spatialrelation');
-				
-			if(spatialRelation.toLowerCase() == 'near' || spatialRelation.toLowerCase() == 'distant'){
-				var dist = this.$('#inputConnectionDistance').val().trim();
-				
-				// Check if distance is number and available, if not set 10 as default.
-				if(!dist || !(dist>=0))
-					dist = 10;
-				
-				this.connection.setParameter("distance", dist);
-				this.descriptionLabel.setLabel(spatialRelation + ' (' + dist + ')');
-			}	
-			else{
-				this.descriptionLabel.setLabel(spatialRelation);
-			}
-		}
-			
-		// Connection description
-		if(type == 'association' || type == 'arc-network' || type == 'arc-network-self'){
-			var description = this.$('#inputConnectionDescription').val().trim();
-			this.descriptionLabel.setLabel(description);
-		}
-			
-		if(type == 'association' || type == 'spatial-association'){
-			// Connection cardinality A
-			var minA = this.$('#inputMinA').val().trim();
-			var maxA = this.$('#inputMaxA').val().trim();
-			minA = minA >= 0 && minA != ""  ? minA : '0';
-			maxA = maxA >= 1 && maxA != "" && minA <= maxA ? maxA : '*';
-			this.cardLabelA.setLabel(this.concatCardLabel(minA, maxA));
+// Context Menu View
+// ----------
 
-			// Connection cardinality B
-			var minB = this.$('#inputMinB').val().trim();
-			var maxB = this.$('#inputMaxB').val().trim();
-			minB = minB >= 0 && minB != ""  ? minB : '0';
-			maxB = maxB >= 1 && maxB != "" && minB <= maxB ? maxB : '*';
-			this.cardLabelB.setLabel(this.concatCardLabel(minB, maxB));			
+app.ContextMenuView = Backbone.View.extend({
+
+	className : 'context-menu',
+	
+	parentSelector: 'body',
 		
-			// Save in the connection parameters
-			this.connection.setParameter("minA", minA);
-			this.connection.setParameter("maxA", maxA);
-			this.connection.setParameter("minB", minB);
-			this.connection.setParameter("maxB", maxB);
-			
-			app.plumbUtils.updateLabelsPosition(this.connection);
-		}
-			
-		if(type == 'cartographic-generalization-disjoint' || type == 'cartographic-generalization-overlapping'){
-			this.cartographicLabel.setLabel(this.$('input:radio[name=inlineRadioOptions]:checked').val());
-		}
-		
-		app.plumbUtils.updateLabelsPosition(this.connection);
-			
-		// Update undo history
-		app.canvasView.updateHistory();
+	events : {
+		'click  #cmEdit' : 'editDiagram',
+		'click  #cmDelete' : 'deleteDiagram',
+		'click  #cmToFront' : 'bringToFront',
+		'click  #cmToBack' : 'sendToBack',
+		'click  #cmCopy' : 'copyDiagram',
+		'click  #cmPaste' : 'pasteDiagram',
+		'click  #cmDuplicate' : 'duplicateDiagram',
+		'click  #cmUndo' : 'undo',
+		'click  #cmRedo' : 'redo',
+		'click' : 'destroyMenu',
+		'contextmenu' : 'rightClick'
 	},
-		
-	detach : function(event) {
-			
-		if (confirm(app.msgs.deleteConnection)){
-			
-			var type = this.connection.getType()[0];
 
-			// Detach leg connections of the cartographic
-			if(type == 'cartographic-generalization-disjoint' || type == 'cartographic-generalization-overlapping'){
-				app.plumb.detachAllConnections(this.connection.getOverlay("cartographic-square").getElement());		
-			}
-			else if(type == 'arc-network' || type == 'arc-network-sibling' || type == 'arc-network-self' || type == 'arc-network-sibling-self'){
-				var sibling = this.connection.getParameter("sibling");
-				app.plumb.detach(sibling);
-			}
+	initialize : function(options) {		
 			
-			app.plumb.detach(this.connection);
-			
-			//this.teardown();
-		}
-	},
-		
-	concatCardLabel : function(min, max){
-
-		if(min == max)
-			return min;
-
-		return min + ".." + max;
-	},
-		
-	// Selected the option in the diagram type dropdown
-	selectSpatialRelation : function(event) {
-		var selected = this.$(event.currentTarget).html();
-		this.$('#inputConnectionSpatialRelation').html(selected);
-
-		var spatialrelation = this.$(event.currentTarget).data('spatialrelation').trim();
-		this.$('#inputConnectionSpatialRelation').data('spatialrelation', spatialrelation);
-			
-		if(spatialrelation.toLowerCase() == 'near' || spatialrelation.toLowerCase() == 'distant'){
-			this.$('#inputConnectionDistance').prop("disabled", false);
-			this.$('#inputConnectionDistance').val(this.connection.getParameter("distance"));
+		if(options.diagramView != null){
+			this.template = _.template($('#contextmenu-diagram-template').html());
+			this.diagramView = options.diagramView;
 		}
 		else{
-			this.$('#inputConnectionDistance').prop("disabled", true);
-			this.$('#inputConnectionDistance').val("");
-			this.connection.setParameter("distance", "");
+			this.template = _.template($('#contextmenu-canvas-template').html());
+			this.offsetTop = options.offsetTop;
+			this.offsetLeft = options.offsetLeft; 
 		}
+						
+		this.left = options.left;
+		this.top = options.top;			
+			
+		this.render();
+	},
+
+	render : function() {			
+		this.$el.html(this.template());   			
+		this.$el.appendTo(this.parentSelector);
+					
+		// Context menu of canvas 
+		if(this.diagramView == null){
+				
+			// set paste inactive if there is nothing on clipboard
+			if(app.canvas.get('clipboard') == null){
+				this.$('#cmPaste').parent().addClass('disabled');  
+			} 
+				
+			// set undo and redo inactive
+			var undoManager = app.canvas.get('undoManager');				
+			if(!undoManager.hasUndo())
+				this.$('#cmUndo').parent().addClass('disabled');				
+			if(!undoManager.hasRedo())
+				this.$('#cmRedo').parent().addClass('disabled');  
+		} 
+			
+		//TODO: chose position to better fit the canvas
+		this.$('.context-menu-content').css({ 
+			top: this.top + 'px', 
+			left: this.left + 'px' 
+		});	
+			
+		return this;
 	},
 		
-	// Avoid form submission on enter
-	preventSubmission : function(event) {
-		event.preventDefault();
-	}
+	destroyMenu: function() {				
+	    // COMPLETELY UNBIND THE VIEW
+	    this.undelegateEvents();
 
+	    this.$el.removeData().unbind(); 
+
+	    // Remove view from DOM
+	    this.remove();  
+	    Backbone.View.prototype.remove.call(this);
+	},
+		
+	editDiagram : function() { 
+		this.diagramView.edit(); 
+	},
+		
+	deleteDiagram : function() {
+		this.diagramView.deleteDiagram();
+	},
+		
+	bringToFront : function() {
+		this.diagramView.bringToFront();
+	},
+		
+	sendToBack : function() {
+		this.diagramView.sendToBack(); 
+	},
+		
+	duplicateDiagram : function() {
+		app.canvas.duplicateDiagram(this.diagramView.model);
+	}, 
+		
+	copyDiagram : function() {
+		app.canvas.copyDiagram(this.diagramView.model);
+	}, 
+		
+	pasteDiagram : function(event) {
+		if(app.canvas.hasClipboard())
+			app.canvas.pasteDiagram(this.offsetTop, this.offsetLeft);
+		else
+			event.stopPropagation();
+	}, 
+		
+	rightClick : function(event) {
+		event.preventDefault();
+		this.destroyMenu(); 
+	},
+		
+	undo : function(event) {					
+		if(app.canvas.get('undoManager').hasUndo()){
+			app.canvasView.undoHistory();
+		}
+		else{
+			event.stopPropagation(); 
+		}			
+	}, 
+		
+	redo : function(event) {
+		if(app.canvas.get('undoManager').hasRedo()){
+			app.canvasView.redoHistory();
+		}
+		else{
+			event.stopPropagation(); 
+		}
+	}		
 });
 
 
-
-
-// Plumb
-//------------------------------------------------------------
-
+//plumb
+//------------------------
 jsPlumb.ready(function() {
 
 	var defaultConnectorStyle = { 
 			stroke:"black", 
 			strokeWidth:2
 	};
-
+	//espacial
 	var dashedConnectorStyle = { 
 			stroke:"black", 
 			strokeWidth:2,
@@ -1525,7 +2370,7 @@ jsPlumb.ready(function() {
 			outlineStroke:"transparent", 
 			outlineWidth:2
 	};	
-	
+	//agregação composição
 	var diamondOverlay = [ [ "Diamond", {
 		length : 35,
 		width : 18,
@@ -1576,7 +2421,7 @@ jsPlumb.ready(function() {
 	// Plumbing default setup
 	app.plumb = jsPlumb.getInstance({
 		Anchor : "Continuous",
-//		ConnectionsDetachable : false, // Was causing error on aggregation.
+		//ConnectionsDetachable : false, // Was causing error on aggregation.
 		Connector : "Flowchart",
 		Container : "canvas",
 		DragOptions : {cursor : "pointer", zIndex : 2000},
@@ -1587,6 +2432,51 @@ jsPlumb.ready(function() {
 	// Define all the connection types
 	app.plumb.registerConnectionTypes({
 		"association" : {
+			paintStyle: defaultConnectorStyle,
+			hoverPaintStyle: connectorHoverStyle,
+			overlays : [[ "Label", { label:"", location:0.5, id:"description-label", cssClass: "description-label" } ],
+			            [ "Label", { label:"0..*", location:30, id:"cardinality-labelA", cssClass: "cardinality-label" } ],
+			            [ "Label", { label:"0..*", location:-30, id:"cardinality-labelB", cssClass: "cardinality-label" } ],
+					    [ "Custom", { 
+					        create:function(component) {
+					            return $("<div id='container'> </div>");            
+					        },    
+					        location: 0.5, 
+					        id:"description-arrow",
+					        cssClass:"description-arrow" }]
+					    //[ "Diamond", { label:"relation", location: 0.5, id:"shape", cssClass: "cardinality-label" } ],
+					   ],
+			parameters: {
+				"minA" : "0",
+				"maxA" : "*",
+				"minB" : "0",
+				"maxB" : "*",
+			},
+		},
+		
+		"spatial-association" : {
+			paintStyle: dashedConnectorStyle,
+			hoverPaintStyle: connectorHoverStyle,
+			overlays : [[ "Dot", { label:"Intersects", location:-25, id:"description-label", cssClass: "description-label" } ],
+			            [ "Label", { label:"0..*", location:30, id:"cardinality-labelA", cssClass: "cardinality-label" } ],
+			            [ "Label", { label:"0..*", location:-30, id:"cardinality-labelB", cssClass: "cardinality-label" } ],
+					    [ "Custom", { 
+					        create:function(component) {
+					            return $("<img src='imgs/relation/description-arrow.png' alt='Arrow of the relation'>");                
+					        },    
+					        location: 0.5, 
+					        id:"description-arrow",
+					        cssClass:"description-arrow" }]
+					   ],
+			parameters: {
+				"minA" : "0",
+				"maxA" : "*",
+				"minB" : "0",
+				"maxB" : "*",
+				"distance" : "",
+			},
+		},
+		"aggregation" : {
 			paintStyle: defaultConnectorStyle,
 			hoverPaintStyle: connectorHoverStyle,
 			overlays : [[ "Label", { label:"", location:0.5, id:"description-label", cssClass: "description-label" } ],
@@ -1607,33 +2497,6 @@ jsPlumb.ready(function() {
 				"maxB" : "*",
 			},
 		},
-		"spatial-association" : {
-			paintStyle: dashedConnectorStyle,
-			hoverPaintStyle: connectorHoverStyle,
-			overlays : [[ "Label", { label:"Intersects", location:0.5, id:"description-label", cssClass: "description-label" } ],
-			            [ "Label", { label:"0..*", location:30, id:"cardinality-labelA", cssClass: "cardinality-label" } ],
-			            [ "Label", { label:"0..*", location:-30, id:"cardinality-labelB", cssClass: "cardinality-label" } ],
-					    [ "Custom", { 
-					        create:function(component) {
-					            return $("<img src='imgs/relation/description-arrow.png' alt='Arrow of the relation'>");                
-					        },    
-					        location: 0.5, 
-					        id:"description-arrow",
-					        cssClass:"description-arrow" }]
-					   ],
-			parameters: {
-				"minA" : "0",
-				"maxA" : "*",
-				"minB" : "0",
-				"maxB" : "*",
-				"distance" : "",
-			},
-		},
-		"aggregation" : {
-			paintStyle : defaultConnectorStyle,
-			hoverPaintStyle: connectorHoverStyle,
-			overlays : diamondOverlay,
-		},
 		"spatial-aggregation" : {
 			paintStyle : dashedConnectorStyle,
 			hoverPaintStyle: connectorHoverStyle,
@@ -1645,7 +2508,7 @@ jsPlumb.ready(function() {
 			parameters:{
 				"participation":"partial",
 				"disjointness":"disjoint",
-			},
+			}
 		},
 		"generalization-overlapping-partial" : {
 			paintStyle : defaultConnectorStyle,
@@ -1721,27 +2584,30 @@ jsPlumb.ready(function() {
 		
 		var tool = app.canvas.get('activeTool');	
 		if (tool != null && tool.get('model') == 'omtgRelation') {
+
 			var type = tool.get('name');			
-			
+			//alert("connection drag");
 			// set connector to arc-network
 			if(type == "arc-network"){
 				connection.setConnector("Straight");
+				alert("é arc-network");
 			}
 			
 			connection.setType(type);
-			
 			// hide overlays when start dragging
 			if(type == "association" || type == "spatial-association"
 				|| type == "arc-network" ){
+				//alert("hide overlays");
 				connection.hideOverlays();
 			}
-			
+			//alert("retorna");
 			return;
 		}		
 		
 		// if connection comes from a cartographic square, set type as cartographic-leg
 		if(connection.source.classList.contains("cartographic-square")){
 			connection.setType("cartographic-leg");
+			//alert("cartographic-leg");
 			return;
 		}
 		
@@ -1750,6 +2616,7 @@ jsPlumb.ready(function() {
 		// See: https://github.com/jsplumb/jsPlumb/issues/580
 		if( jQuery.inArray( "generalization-leg", connection.getType()) != -1 ){
 			connection.setType("generalization-leg");
+			//alert("generalization-leg");
 			return;
 		}
 	});
@@ -1759,26 +2626,26 @@ jsPlumb.ready(function() {
 	// anchors, to some connections. Here the second line of the
 	// arc-network connection is also connected.
 	app.plumb.bind("connection", function (info, originalEvent) {
-				
+		//alert("é connection");
 		// This was added to fix the bug of jsplumb. It adds more types than
 		// what is necessary. See: https://github.com/jsplumb/jsPlumb/issues/580
+		alert("conn");
 		if(info.connection.getType().length > 1){
 			info.connection.removeType("default");
 			info.connection.removeType("");
+			//alert("teste");
 		}
-				
+
 		var type = info.connection.getType()[0];
 		
 		// Show all overlays after connection is established
 		info.connection.showOverlays();
-		
+		alert("source: "+info.connection.sourceId+"\ntarget: "+info.connection.targetId+"\ntype:"+type);
 		switch(type){
-		
 		case "association":			
 			if(info.connection.sourceId == info.connection.targetId){ 
-				
 				app.plumb.detach(info.connection, {fireEvent : false}); 
-				
+				//alert("autoconecção");
 				var newConn = app.plumb.connect({
 					source : info.connection.sourceId,
 					target : info.connection.targetId,
@@ -1790,24 +2657,29 @@ jsPlumb.ready(function() {
 				
 				newConn.setType(type);
 				
+				var diamond = new app.Diamond();
 				app.plumbUtils.updateLabelsPosition(newConn);
 			}
 			else{
+				
+				var diamond = new app.Diamond();
 				app.plumbUtils.updateLabelsPosition(info.connection);
 			}
 			
 			break;
 			
 		case "spatial-association":
+			//var diamond = new app.Diamond();
+			alert("1")
 			app.plumbUtils.updateLabelsPosition(info.connection);				
 			break;
 		
 		//Adds the second line in network relationships
 		case "arc-network":
-			
+			alert("arc-network");
 			if(info.connection.sourceId == info.connection.targetId){
 				app.plumb.detach(info.connection, {fireEvent : false});
-
+				alert("if arc-network");
 				var newConn = app.plumb.connect({
 					source : info.connection.sourceId,
 					target : info.connection.targetId,
@@ -1887,7 +2759,8 @@ jsPlumb.ready(function() {
 		case "generalization-disjoint-total":
 		case "generalization-overlapping-partial":
 		case "generalization-overlapping-total":
-						
+			alert("2");
+
 			var participation = info.connection.getParameter("participation");
 			var disjointness = info.connection.getParameter("disjointness");
 			
@@ -1922,6 +2795,7 @@ jsPlumb.ready(function() {
 			
 		// Generalization leg type connection with top target anchor
 		case "generalization-leg":
+			alert("3");
 			info.connection.endpoints[1].setAnchor("Top");
 			info.connection.setConnector(["Flowchart", {stub: [50, 30], alwaysRespectStubs: true}]);
 			break;
@@ -1932,6 +2806,7 @@ jsPlumb.ready(function() {
 			// change of anchors, default in jsplumb, the
 			// connection must be detached and re-atached
 			// with the Bottom and Top anchors
+			alert("4");
 			app.plumb.detach(info.connection, {fireEvent : false});
 			var newConn = app.plumb.connect({
 				source : info.connection.sourceId,
@@ -1950,13 +2825,14 @@ jsPlumb.ready(function() {
 			
 		// Cartographic leg type connection with top target anchor
 		case "cartographic-leg":
+		alert("4");
 			info.connection.endpoints[1].setAnchor("Top");
 			info.connection.setConnector(["Flowchart", {stub: [0, 50], alwaysRespectStubs: true}]);
 			break;
 		}
 		
 		app.canvasView.updateHistory(); 
-		
+		//alert("5");
 		// Deactivate all tools
 		app.relationshipTools.deactivateAll();
 		app.classTools.deactivateAll();
@@ -1967,7 +2843,7 @@ jsPlumb.ready(function() {
 	// dropping a connection to its target, the Designer checks if
 	// this relationship is valid accordingly to OMT-G restrictions.
 	app.plumb.bind("beforeDrop", function(info) {
-		
+		//alert("beforedrop");
 		// Get type of the connection and type of the diagrams
 		var type = info.connection.getType()[0];
 		
@@ -2083,20 +2959,20 @@ jsPlumb.ready(function() {
 		
 		// Connections with attributes to be edited. Opens the editor modal
 		else {
-			new app.omtg.ConnectionEditorView({connection : param});
+			new app.ConnectionEditorView({connection : param});
 		}		
 	});
 	
 	app.plumb.bind("connectionDetached", function(info, originalEvent) {
-//		console.log("detached");
+		//console.log("detached");
  
 		// Update undo history
 		app.canvasView.updateHistory();
 	});
-});
+}); // fim do jsplumb
 
-'use strict';
-
+//plumbUtils
+//------------------------
 app.plumbUtils = {
 
 	NETWORK_DIST: 15, 	
@@ -2169,7 +3045,7 @@ app.plumbUtils = {
 		var type = connection.getType();
 		
 		if(type == "association" || type == "spatial-association"){
-			
+			//alert("DLP1");
 			// Get elements
 			var label = connection.getOverlay("description-label");
 			var labelElement = label.getElement();
@@ -2180,6 +3056,7 @@ app.plumbUtils = {
 			var segment = connection.connector.findSegmentForPoint(p.x, p.y);
 			
 			if(connection.sourceId == connection.targetId){
+				//alert("autoconecção");
 				// Set cardinalities position	
 				this.setAssociationLabelClass(connection, "cardinality-labelA", "left");
 				this.setAssociationLabelClass(connection, "cardinality-labelB", "bottom");
@@ -2189,6 +3066,7 @@ app.plumbUtils = {
 				this.setOverlayTransformation(arrow.getElement(), 40 + (-1/2)*arrow.getElement().width, -31, 0);
 			}
 			else{ 
+				//alert("coneção normal");
 				// Set cardinalities position				
 				var sourceEdge = connection.endpoints[0]._continuousAnchorEdge;
 				var targetEdge = connection.endpoints[1]._continuousAnchorEdge;		
@@ -2227,14 +3105,14 @@ app.plumbUtils = {
 			
 			// Hide arrow if the description is empty. 
 			// Occurs only on conventional association.
-			if(label.getLabel() == ""){
+			/*if(label.getLabel() == ""){
 				label.hide();
 				arrow.hide();
 			}
 			else {
 				label.show();
 				arrow.show();
-			}
+			}*/
 		}
 		else if(type == "arc-network"){
 			
@@ -2343,8 +3221,8 @@ app.plumbUtils = {
 	}
 };
 
-'use strict';
-
+//XML Parser
+//------------------------
 app.XMLParser = {
 
 	parseOMTGSchema : function(xml) {
@@ -2385,7 +3263,7 @@ app.XMLParser = {
 	
 	parseOMTGDiagram : function(element) {
 		var children = element.childNodes;
-		var diagram = new app.omtg.Diagram();
+		var diagram = new app.Diagram();
 
 		for ( var i = 0; i < children.length; i++) {
 			switch (children.item(i).nodeName) {
@@ -2414,7 +3292,7 @@ app.XMLParser = {
 	
 	parseOMTGAttributes : function(element) {
 		var children = element.childNodes;	
-		var attributes = new app.omtg.Attributes();
+		var attributes = new app.Attributes();
 		
 		for ( var i = 0; i < children.length; i++) {
 			var attribute = this.parseOMTGAttribute(children.item(i));
@@ -2426,7 +3304,7 @@ app.XMLParser = {
 	
 	parseOMTGAttribute : function(element) {
 		var children = element.childNodes;
-		var attribute = new app.omtg.Attribute();
+		var attribute = new app.Attribute();
 		
 		for ( var i = 0; i < children.length; i++) {	
 			switch(children.item(i).nodeName){

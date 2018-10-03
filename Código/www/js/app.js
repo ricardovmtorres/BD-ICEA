@@ -1,4 +1,4 @@
-// Namespaces
+	// Namespaces
 
 var ENTER_KEY = 13;
 var ESC_KEY = 27;
@@ -41,9 +41,9 @@ $(function () {
 	// Relations
 	app.relationshipTools = new app.Tools([
 	     { name : 'umum', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
-	     { name : 'umn', model : 'omtgRelation', tooltip: 'Spatial Association', icon: 'imgs/relation/spatial-association.png' },
-	     { name : 'num', model : 'omtgRelation', tooltip: 'Aggregation', icon: 'imgs/relation/aggregation.png' },
-	     { name : 'nn', model : 'omtgRelation', tooltip: 'Spatial Aggregation', icon: 'imgs/relation/spatial-aggregation.png' },
+	     { name : 'umn', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
+	     { name : 'num', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
+	     { name : 'nn', model : 'omtgRelation', tooltip: 'Association', icon: 'imgs/relation/association.png' },
 	]);
 
 	

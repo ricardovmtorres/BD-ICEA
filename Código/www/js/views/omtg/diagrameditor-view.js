@@ -1,4 +1,4 @@
-(function($) {
+function($) {
 	'use strict';
 
 	// OMTG Diagram Editor View
