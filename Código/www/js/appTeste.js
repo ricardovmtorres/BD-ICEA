@@ -19,8 +19,8 @@ var V_KEY = 86;
 var Z_KEY = 90;
 var F1_KEY = 112;
 var F2_KEY = 113;
-var newAttribute = 1;
-var attrCnt = 0;
+var newAttribute = 0;
+//var attrCnt = 0;
 
 var app = {
 	// OMT-G namespace
@@ -53,8 +53,8 @@ $(function () {
 
 	// List of toolboxes
 	app.toolboxes = new app.Toolboxes([
-	     {name: "Classes", tools : app.classTools},
-	     {name: "Relationships", tools : app.relationshipTools},
+	     {name: "Entidades", tools : app.classTools},
+	     {name: "Relacionamentos", tools : app.relationshipTools},
 	]);	
 
 	// Canvas Model
@@ -604,9 +604,13 @@ app.Diagrams = Backbone.Collection.extend({
 			}
 		},
 		
+		//retorna o diagrama que esta selecionado
 		getSelected : function() {
 			var diagram = this.findWhere({selected : true});
-			return this.where({selected : true});
+			console.log(diagram);
+			//alert(diagram[0]);
+			//return this.where({selected : true});
+
 		},
 	    
 	    propagate_selected: function(p) { 
@@ -705,7 +709,7 @@ app.Toolboxes = Backbone.Collection.extend({
 
 /*View*/
 //[DiamondView, DiagramView, ToolView, ToolsView, ToolboxView, NavbarView(ToolboxesView), AttributeView, DiagramEditorView, CanvasView, ConnectioneditorView, AboutView, ContextmenuView, BodyView, xmlImporterView]
-//TODO: newAttributeView
+//newAttributeView
 //-------------------------------------------------------------------------------------------------------------
 
 // Diamond View
@@ -1026,23 +1030,34 @@ app.newAttributeView = Backbone.View.extend({
 		
 	parentSelector : '#canvas',
 
+	//id= '<%= name %>', ERRADO
+
 	initialize : function() {
 		//carrega o template e chama render
-		this.template = _.template("<div id='qwe'><%= name %></div>");
+		this.template = _.template("<div > <%= name %> </div>");
 		this.listenTo(this.model, 'change', this.render);
+		this.listenTo(this.top, 'change', this.render2);
+		//this.render();
 	},
 
 	render : function() {
-		//tem o funcionamento parecido com o diagramView, pois é chamado no canvasView(diferente do attributeView que é chamado no diagrameView)
-		//o render também é similar ao do attributeView
-		//tem que ser chamado depois do update (!resolvido: o comando de captura'change' no canvas view é acionado depois do update)
+		// tem o funcionamento parecido com o diagram view, pois é chamado no canvasView(diferente do attributeView que é chamado no diagrameView)
+		// tambem 
+		//tem que ser chamado depois do update (!resolvido: o comando de capitura'change' no canvas view é acionado depois do update)
 		//imprime os divs com coordenadas do diagram selecionado
-		
+		// Render attr id
+		this.el.id = this.model.get('name');
+			
+		// TODO: include other attr fields
+		this.$el.html(this.template({
+			isKey : this.model.get('isKey'), 
+			attr : this.model.get('type') == 'VARCHAR' ? this.model.escape('name') + ': ' + this.model.get('type') + '('+ this.model.get('length') +')' : this.model.escape('name') + ': ' + this.model.get('type'),
+		}));
+
 		// Set position
-		this.$el.css({
+		this.$el.css({        
 			'top': this.model.get('top'),
-			'left': this.model.get('left'),
-			//'id': this.model.get('name')
+			'left': this.model.get('left')
 		});			
 		
 		// Render name and type
@@ -1051,26 +1066,33 @@ app.newAttributeView = Backbone.View.extend({
 		app.plumbUtils.repaintAllAnchors();
 		app.plumb.repaintEverything();
 		console.log(this.el);
-		console.log(this.$el.id);
+		console.log(this.$el);
+		return this;
+		
+	},
 
-		var target1 = this.model.get('name');
+	render2 : function() {
+		//alert('render2');
+		// Set position
+		this.$el.css({        
+			'top': this.model.get('top'),
+			'left': this.model.get('left')
+		});			
+		
+		// Render name and type
+		this.$el.html(this.template(this.model.toJSON()));
 
-		if(attrCnt>0){
-			jsPlumb.connect({
- 				source:"c39", 
-  				target: 'qwe',
-  				anchors : [ "Bottom", "Top" ],
-  				//endpoint:"Dot",
-			});
-		}
+		app.plumbUtils.repaintAllAnchors();
+		app.plumb.repaintEverything();
 
 		return this;
 		
 	},
 
+
 });
 
-// Diagram View
+// OMTG Diagram View
 // ----------
 	
 app.DiagramView = Backbone.View.extend({
@@ -1138,9 +1160,10 @@ app.DiagramView = Backbone.View.extend({
 			this.$el.html(this.template(this.model.toJSON()));
 			
 			// Render attributes
-			if(!newAttribute){
-				var attributes = this.model.get('attributes');						
-				attributes.each(function(attribute) {				
+			if(newAttribute){
+				var attributes = this.model.get('attributes');	
+						
+				attributes.each(function(attribute) {
 					var attributeView = new app.AttributeView({model : attribute});
 					this.$('.d-body > table > tbody').append(attributeView.render().el);
 				}, this);
@@ -1230,19 +1253,15 @@ app.DiagramView = Backbone.View.extend({
 				'left': Math.round(this.$el.position().left / grid) * grid,
 				'top' : Math.round(this.$el.position().top / grid) * grid
 			});
-						
+
+			//alert("update diagram position");
+
 			var plumbConnections = app.plumb.getConnections(this.$el);
 			
 			for (var i = 0; i < plumbConnections.length; i++) {
 				app.plumbUtils.updateLabelsPosition(plumbConnections[i]);
 			}
-
-			//update newAttributes position
-			this.model.get('attributes').each(function(attr){
-				//alert(":"+attr.get('name'));
-				
-			}, this);
-
+			jsPlumb.repaintEverything();
 		},
 		
 		handleMouseEnter : function() {
@@ -1311,6 +1330,9 @@ app.DiagramEditorView = Backbone.View.extend({
 			this.hasConnections = options.hasConnections;
 			
 			// Copy of attributes
+			//.clone() copia todos os atributos do modelo.
+			//chamar clone do attr e dos dgrms depois do update 
+			//e fazer as conecções com os nomes no canvas view
 			this.attrsClone = this.model.get('attributes').clone();
 
 			this.render();
@@ -1367,11 +1389,12 @@ app.DiagramEditorView = Backbone.View.extend({
 				this.$('#formDiagramName').addClass("has-error");
 				this.$('#btnUpdate').addClass("disabled");
 			}			
-		}, 
+		},
 
+		//update
 		updateDiagram : function() { 
-			attrCnt=0;
-
+			attrCnt=this.model.get('attributes').length;
+			//alert("numero de atributos: "+this.model.get('attributes').length);
 			// Diagram type
 			var type = this.$('#inputDiagramType').data('type-name');
 			if (type) {
@@ -1390,36 +1413,57 @@ app.DiagramEditorView = Backbone.View.extend({
 				if(attr.get('name') == ''){				
 					this.attrsClone.remove(attr);
 					i--;
+				}else{
+					//else adicionado 
+					//attrsClone são os atributos que ja estão diagrama manipulado nesse DiagramEditorView
+					//coloca cada atributo do attrsClone no na lista de aattributos do app.canvas
+					app.canvas.get('attributes').add(attr);
 				}
 			}
+
 			this.model.set({'attributes': this.attrsClone});
+			//alert("numero de atributos: "+this.model.get('attributes').length);
 			this.model.trigger('change', this.model);
 
-			
+			this.model.get('attributes').each(function(attr){
+				//alert("attr: "+ attr.get('name')+"\ndiagrama: "+ attr.get('diagram'));
+
+			},this);
 			
 			//this.teardown();
 		},
 
+		//Botão add
 		newAttribute : function() {
+			attrCnt++;
+			var diagrama = this.model.get('id');
 			var top1 = this.model.get('top');
 			var left1 = this.model.get('left');
-			alert('top: '+top1+"\nleft: "+left1);
-			
-			alert('attrCnt: '+attrCnt);
-			top1+= 100 + attrCnt*20;
-			left1+= 30 + attrCnt*20;
-			attrCnt++;
+			//alert('top: '+top1+"\nleft: "+left1);
 
-			var attr = new app.Attribute({top: top1, left: left1});
-			alert('top: '+attr.get('top')+"\nleft: "+attr.get('left'));
-			
+			//alert('Nº de attributos: '+this.attrsClone.length);
+			//colocar na variavel attrcnt o tamanho da lista de atributos da tabela(this.attrsClone)
+			var attrCnt = this.attrsClone.length;
+
+			//alert('attrCnt: '+attrCnt);
+			top1+= 150 + attrCnt*20;
+			left1+= 40 + attrCnt*20;
+			//attrCnt++;
+
+			var attr = new app.Attribute({top: top1, left: left1, diagram: diagrama});
+			//alert('top: '+attr.get('top')+"\nleft: "+attr.get('left'));
+
 			this.addAttribute(attr);
-			app.canvas.get('attributes').add(attr);
+			//attrCnt++;
+			//inserção dos atributos do diagrama no canvas agora é feita no update
+			//app.canvas.get('attributes').add(attr);
 			this.attrsClone.add(attr);
 
 		},
 
+		//adiciona o atributo na tabela
 		addAttribute : function(attribute) {
+			//attrCnt++;
 			var rowTemplate = _.template($('#omtg-attribute-row-editor-template').html());
 			var html = rowTemplate(attribute.toJSON());
 			this.$('#attrTable > tbody > tr:last').before(html);
@@ -1976,12 +2020,74 @@ app.CanvasView = Backbone.View.extend({
 
 		initialize : function() {
 			this.listenTo(this.model.get('diagrams'), 'add', this.addDiagram);
+			this.listenTo(this.model.get('diagrams'), 'change', this.updateDiagram);
 			this.listenTo(this.model.get('attributes'), 'add', this.addNewAttr);
 			this.listenTo(this.model.get('diagrams'), 'change', this.updateHistory);
 			this.listenTo(this.model, 'change:activeTool', this.setCursor);
 			this.listenTo(this.model, 'change:grid', this.toggleGrid);
 			this.listenTo(this.model, 'change:diagramShadow', this.toggleDiagramShadow);
 			this.listenTo(this.model, 'updateHistory', this.updateHistory);
+		},
+
+		updateDiagram : function() {
+			//alert('updateDiagram');
+			app.canvasView.updateAttr();
+			//atualiza posições dos atributos no canvas view
+				//this.addAttribute(attr);
+				/*attr.set({
+					'left': Math.round(this.$el.position().left / grid) * grid,
+					'top' : Math.round(this.$el.position().top / grid) * grid
+				});*/
+			//this.model.get('undoManager').update();
+		},
+
+		updateAttr : function(){
+			
+			
+			// lista de attributes(modelo er) do diagrama selecionado
+			var attrs = this.model.get('attributes');
+			// i do for
+			var attrn = 0;
+			// percorre a lista de attributes do diagrama selecionado
+			attrs.each(function(attr){
+				//console.log('attr update : ');
+				//console.log(dObject.el);
+
+				
+				var idDiv = attr.get('name');
+				////cont
+				//alert('nome do attr1 : '+idDiv);
+				//só muda a posição do selecionado
+				attrn++;
+				//alert('numero de attributes: '+attrn);
+
+				// pega o diagram selecionado e seus atributos(objeto diagrama).
+				var dgrms = this.model.get('diagrams');
+				var dselected = new app.Diagram();
+				dgrms.each(function(dgrm){
+					if(dgrm.get('id') == attr.get('diagram')){
+						//alert("dgrm: "+dgrm.get('name'));
+						dselected = dgrm;
+					}
+				},this);
+
+				//var diagrama = dselected.get('id');
+				var top1 = dselected.get('top');
+				var left1 = dselected.get('left');
+				//alert('dselected:\ntop: '+top1+"\nleft: "+left1);
+				console.log(dselected);
+
+				top1+= 150 + attrn*20;
+				left1+= 40 + attrn*20;
+
+				//todo
+				attr.set({'top ': top1, 'left' : left1});
+				//document.getElementById(idDiv).css({top: top1, left: left1});
+				//document.getElementById(idDiv).style.left = left1;
+				//document.getElementById(idDiv).style.top = top1;
+			},this);
+			
+
 		},
 		
 		clearCanvas : function() {
@@ -2056,7 +2162,7 @@ app.CanvasView = Backbone.View.extend({
 				this.$el.css("cursor", "default");
 			}			
 		},		
-		
+			
 		toggleGrid : function() {		
 			
 			if(this.model.get('grid')){
@@ -2066,7 +2172,7 @@ app.CanvasView = Backbone.View.extend({
 				this.$el.removeClass('canvas-background');
 			}
 		},	
-		
+			
 		toggleDiagramShadow : function() {	
 			
 			if(this.model.get('diagramShadow')){
@@ -2076,7 +2182,7 @@ app.CanvasView = Backbone.View.extend({
 				this.$el.find('.diagram-container').removeClass('diagram-container-shadow');
 			}
 		},	
-		
+			
 		addDiagram : function(diagram) {
 			
 			app.plumb.setSuspendDrawing(true);			
@@ -2089,7 +2195,8 @@ app.CanvasView = Backbone.View.extend({
 			//alert("before adddiagram");
 			this.$el.append(dObject);
 			//alert("adddiagram");
-			
+			//qwe
+			//alert("teste nome: "+diagramView.model.get('name'));
 			//Plumbing			
 			app.plumb.draggable(dObject, {
 				containment : '#canvas',
@@ -2107,30 +2214,44 @@ app.CanvasView = Backbone.View.extend({
 					return tool != null && tool.get('model') == 'omtgRelation';
 				}
 			});
-
 			app.plumb.makeTarget(dObject);
 
 			app.plumb.setSuspendDrawing(false, true);
+
+
 		},
 
+		// um novo atributo é adicionado no app.canvas(this.model) 
+		// na lista de atributos(this.model.get(''))
 		addNewAttr : function(attribute) {
 			
 			app.plumb.setSuspendDrawing(true);			
-			alert('1');
+			//alert('1');
 			var newAttributeView = new app.newAttributeView({
 				model : attribute
 			});
-			alert('3');
 
 			var dObject = newAttributeView.render().el;
+			//insere o objeto do view do novo atributo 
 			this.$el.append(dObject);
-			
+
+			var source = newAttributeView.model.get('name');
+			var target = newAttributeView.model.get('diagram');
+
+			jsPlumb.connect({
+				source: source,
+				target: target,
+			});
+			//Nome do atributo e o nome do seu respectivo diagram
+			//alert("teste nome2: "+newAttributeView.model.get('name')+"\nteste diagram: "+newAttributeView.model.get('diagram'));
+			attrCnt++;
 			//Plumbing			
 			app.plumb.draggable(dObject, {
 				containment : '#canvas',
 				scroll : true,
 				drag:function(e,ui) {
 					// TODO: remove this drag function and repaint for performance reasons
+					//app.plumb.repaintEverything();
 					if($(".cartographic-square").length > 0)
 						app.plumb.repaintEverything();
 				}
@@ -2457,7 +2578,7 @@ jsPlumb.ready(function() {
 		"spatial-association" : {
 			paintStyle: dashedConnectorStyle,
 			hoverPaintStyle: connectorHoverStyle,
-			overlays : [[ "Dot", { label:"Intersects", location:-25, id:"description-label", cssClass: "description-label" } ],
+			overlays : [[ "Label", { label:"Intersects", location:0.5, id:"description-label", cssClass: "description-label" } ],
 			            [ "Label", { label:"0..*", location:30, id:"cardinality-labelA", cssClass: "cardinality-label" } ],
 			            [ "Label", { label:"0..*", location:-30, id:"cardinality-labelB", cssClass: "cardinality-label" } ],
 					    [ "Custom", { 
@@ -2590,7 +2711,7 @@ jsPlumb.ready(function() {
 			// set connector to arc-network
 			if(type == "arc-network"){
 				connection.setConnector("Straight");
-				alert("é arc-network");
+				//alert("é arc-network");
 			}
 			
 			connection.setType(type);
@@ -2629,7 +2750,6 @@ jsPlumb.ready(function() {
 		//alert("é connection");
 		// This was added to fix the bug of jsplumb. It adds more types than
 		// what is necessary. See: https://github.com/jsplumb/jsPlumb/issues/580
-		alert("conn");
 		if(info.connection.getType().length > 1){
 			info.connection.removeType("default");
 			info.connection.removeType("");
@@ -2640,12 +2760,12 @@ jsPlumb.ready(function() {
 		
 		// Show all overlays after connection is established
 		info.connection.showOverlays();
-		alert("source: "+info.connection.sourceId+"\ntarget: "+info.connection.targetId+"\ntype:"+type);
+		//alert("source: "+info.connection.sourceId+"\ntarget: "+info.connection.targetId+"\ntype:"+type);
 		switch(type){
 		case "association":			
 			if(info.connection.sourceId == info.connection.targetId){ 
 				app.plumb.detach(info.connection, {fireEvent : false}); 
-				//alert("autoconecção");
+				//alert("iffff");
 				var newConn = app.plumb.connect({
 					source : info.connection.sourceId,
 					target : info.connection.targetId,
@@ -2661,7 +2781,7 @@ jsPlumb.ready(function() {
 				app.plumbUtils.updateLabelsPosition(newConn);
 			}
 			else{
-				
+				//alert("else1");
 				var diamond = new app.Diamond();
 				app.plumbUtils.updateLabelsPosition(info.connection);
 			}
@@ -2670,16 +2790,16 @@ jsPlumb.ready(function() {
 			
 		case "spatial-association":
 			//var diamond = new app.Diamond();
-			alert("1")
+			//alert("1")
 			app.plumbUtils.updateLabelsPosition(info.connection);				
 			break;
 		
 		//Adds the second line in network relationships
 		case "arc-network":
-			alert("arc-network");
+			//alert("arc-network");
 			if(info.connection.sourceId == info.connection.targetId){
 				app.plumb.detach(info.connection, {fireEvent : false});
-				alert("if arc-network");
+				//alert("if arc-network");
 				var newConn = app.plumb.connect({
 					source : info.connection.sourceId,
 					target : info.connection.targetId,
@@ -2759,7 +2879,7 @@ jsPlumb.ready(function() {
 		case "generalization-disjoint-total":
 		case "generalization-overlapping-partial":
 		case "generalization-overlapping-total":
-			alert("2");
+			//alert("2");
 
 			var participation = info.connection.getParameter("participation");
 			var disjointness = info.connection.getParameter("disjointness");
@@ -2795,7 +2915,7 @@ jsPlumb.ready(function() {
 			
 		// Generalization leg type connection with top target anchor
 		case "generalization-leg":
-			alert("3");
+			//alert("3");
 			info.connection.endpoints[1].setAnchor("Top");
 			info.connection.setConnector(["Flowchart", {stub: [50, 30], alwaysRespectStubs: true}]);
 			break;
@@ -2806,7 +2926,7 @@ jsPlumb.ready(function() {
 			// change of anchors, default in jsplumb, the
 			// connection must be detached and re-atached
 			// with the Bottom and Top anchors
-			alert("4");
+			//alert("4");
 			app.plumb.detach(info.connection, {fireEvent : false});
 			var newConn = app.plumb.connect({
 				source : info.connection.sourceId,
@@ -2825,7 +2945,7 @@ jsPlumb.ready(function() {
 			
 		// Cartographic leg type connection with top target anchor
 		case "cartographic-leg":
-		alert("4");
+		//alert("4");
 			info.connection.endpoints[1].setAnchor("Top");
 			info.connection.setConnector(["Flowchart", {stub: [0, 50], alwaysRespectStubs: true}]);
 			break;
@@ -3039,7 +3159,7 @@ app.plumbUtils = {
     	overlay.style.oTransform      = 'translate('+a+'px, '+b+'px) rotate('+angle+'rad)'; 
     	overlay.style.transform       = 'translate('+a+'px, '+b+'px) rotate('+angle+'rad)';
     },
-		
+	
 	updateLabelsPosition : function(connection){
 		
 		var type = connection.getType();
@@ -3056,7 +3176,7 @@ app.plumbUtils = {
 			var segment = connection.connector.findSegmentForPoint(p.x, p.y);
 			
 			if(connection.sourceId == connection.targetId){
-				//alert("autoconecção");
+				//alert("DLP IF");
 				// Set cardinalities position	
 				this.setAssociationLabelClass(connection, "cardinality-labelA", "left");
 				this.setAssociationLabelClass(connection, "cardinality-labelB", "bottom");
@@ -3066,7 +3186,7 @@ app.plumbUtils = {
 				this.setOverlayTransformation(arrow.getElement(), 40 + (-1/2)*arrow.getElement().width, -31, 0);
 			}
 			else{ 
-				//alert("coneção normal");
+				//alert("DLP ELSE");
 				// Set cardinalities position				
 				var sourceEdge = connection.endpoints[0]._continuousAnchorEdge;
 				var targetEdge = connection.endpoints[1]._continuousAnchorEdge;		
