@@ -725,7 +725,7 @@ app.DiamondView = Backbone.View.extend({
 		events : {
 			
 			// Delete the diagram and remove its view from canvas
-			'click .badge-delete' : 'deleteDiagram',
+			'click .badge-delete' : 'deleteDiamond',
 			
 			'click .badge-edit' : 'edit',
 			
@@ -829,7 +829,8 @@ app.DiamondView = Backbone.View.extend({
 			var modal = new app.DiagramEditorView({model : this.model, hasConnections : hasConnections});
 		},
 		
-		deleteDiagram : function(event) {
+		//todo: delete diamond??
+		deleteDiamond : function(event) {
 			if(event) 
 				event.stopPropagation(); 
 			
@@ -1089,6 +1090,20 @@ app.newAttributeView = Backbone.View.extend({
 		
 	},
 
+	//criado  28/05
+	deleteAttribute : function(event) {
+		if(event) 
+			event.stopPropagation(); 
+		
+		if (confirm(app.msgs.DELETE_ATTR)){			
+			app.plumb.detachAllConnections(this.$el);						
+			
+			// Remove view				 
+			this.model.trigger("destroy", this.model); 
+			app.canvasView.updateHistory();
+		}
+	},
+
 
 });
 
@@ -1241,8 +1256,10 @@ app.DiagramView = Backbone.View.extend({
 			if (confirm(app.msgs.DELETE_DIAGRAM)){			
 				app.plumb.detachAllConnections(this.$el);						
 				
-				// Remove view				 
+				// Remove view		
+				// ativa o 'deleteDiagram' do Diagram.model	 
 				this.model.trigger("destroy", this.model); 
+
 				app.canvasView.updateHistory();
 			}
 		},
@@ -1292,7 +1309,6 @@ app.DiagramView = Backbone.View.extend({
 
 // OMTG Diagram Editor View
 // ----------
-
 app.DiagramEditorView = Backbone.View.extend({
 
 		id : 'diagram-editor',
@@ -1469,10 +1485,30 @@ app.DiagramEditorView = Backbone.View.extend({
 			this.$('#attrTable > tbody > tr:last').before(html);
 		},
 
+		//TODO: disparar função que deleta newAttribute específico da $row
 		deleteAttribute : function(event) {	
+			//seleciona a linha do atributo no modal do diagrama em questão
 			var $row = this.$(event.currentTarget).closest('tr');
+			
+			//MODIFICAÇÕES::
+			//Oostestes abaixo mostraram o comportamento dos atributos no modelo em questão
+			//o modelo é refetente ao DiagramEditorView
+			//---------
+			// var diagrama = this.model.get('id');
+			// //var atributo = diagrama.get('attributes');
+			console.log(this.model.get('attributes'));
+			//---------
+			
+
+			// remove atributo da lista de clones de attrs 
 			this.attrsClone.remove(this.attrsClone.at($row.index()));
+			// remove a linha do atributo no DiagramEditorView do diagrama em questão
 			$row.remove();
+
+			//o updateHistory foi adicionado 28/05 mas não resolvel o problema de identificação do attr no canvas através do attr no DiagramEditorView
+			// deletar o attr do canvas abaixo
+			// Update undo history
+			app.canvasView.updateHistory();
 		},
 		
 		moveAttributeUp : function(event) {
@@ -2014,7 +2050,7 @@ app.CanvasView = Backbone.View.extend({
 		
 		events : {
 			'click' : 'clicked',
-			
+		
 			'contextmenu' : 'openContextMenu'
 		},
 
@@ -2022,6 +2058,7 @@ app.CanvasView = Backbone.View.extend({
 			this.listenTo(this.model.get('diagrams'), 'add', this.addDiagram);
 			this.listenTo(this.model.get('diagrams'), 'change', this.updateDiagram);
 			this.listenTo(this.model.get('attributes'), 'add', this.addNewAttr);
+			this.listenTo(this.model.get('attributes'), 'change', this.updateAttr);
 			this.listenTo(this.model.get('diagrams'), 'change', this.updateHistory);
 			this.listenTo(this.model, 'change:activeTool', this.setCursor);
 			this.listenTo(this.model, 'change:grid', this.toggleGrid);
@@ -2042,18 +2079,19 @@ app.CanvasView = Backbone.View.extend({
 		},
 
 		updateAttr : function(){
+			//essa função é executada 1xNumero de atributos no canvasView
 			
-			
-			// lista de attributes(modelo er) do diagrama selecionado
+			// this.model == modelo canvasView
+			// attrs == lista de attributes(modelo er) do canvasView
 			var attrs = this.model.get('attributes');
+			console.log(attrs);
 			// i do for
 			var attrn = 0;
-			// percorre a lista de attributes do diagrama selecionado
+			// percorre a lista de attributes do diagrama selecionado?
 			attrs.each(function(attr){
-				//console.log('attr update : ');
+				console.log('attr update : ');
 				//console.log(dObject.el);
 
-				
 				var idDiv = attr.get('name');
 				////cont
 				//alert('nome do attr1 : '+idDiv);
@@ -2062,29 +2100,49 @@ app.CanvasView = Backbone.View.extend({
 				//alert('numero de attributes: '+attrn);
 
 				// pega o diagram selecionado e seus atributos(objeto diagrama).
+				// dgrms == lista de diagramas do canvasView
 				var dgrms = this.model.get('diagrams');
+				// dselected == obj do tipo Diagram
 				var dselected = new app.Diagram();
+				// para cada diagrama da lista dgrms verifica qual foi selecionado
 				dgrms.each(function(dgrm){
 					if(dgrm.get('id') == attr.get('diagram')){
 						//alert("dgrm: "+dgrm.get('name'));
 						dselected = dgrm;
 					}
 				},this);
+				// agora, dselected == diagrama que disparou 'change'
 
-				//var diagrama = dselected.get('id');
+				//listagem de attrs do diagrama que disparou 'change' 
+				// atbs == lista de atributos do diagrama que disparou 'change'
+				var atbs = [];
+
+				//TODO: FIX: isso deve ser disparado dentro de diagram view ou dentro de attrview pq ta esxecutando para todo o canvas view e não só para o diagrama selecionado
+				attrs.each(function(atb){
+					if(atb.get('diagram') == dselected.get('id')){
+						//imprime o nome do atributo e a qual diagrama ele pertence 
+						console.log("Atributo(atb): "+atb.get('name'));
+						console.log("Diagrama(atb.diagram): "+atb.get('diagram'));
+						console.log("Diagrama(dselected.id): "+dselected.get('id'));
+						//TODO: TRATAR ATTRS DE NOME IGUAL DE ALGUMA MANEIRA
+
+						//acrescenta atb no final do array atbs
+						atbs.push(atb);
+					}
+				},this);
+				console.log(atbs);
+
+				//var diagrama = dselected.get('id');	teste
 				var top1 = dselected.get('top');
 				var left1 = dselected.get('left');
-				//alert('dselected:\ntop: '+top1+"\nleft: "+left1);
-				console.log(dselected);
+				//alert('dselected:\ntop: '+top1+"\nleft: "+left1);	teste
+				//console.log(dselected);	teste
 
-				top1+= 150 + attrn*20;
-				left1+= 40 + attrn*20;
+				// numeros base(135,20) e o peso(20) foram definidos experimentalmente
+				top1+= 135 + attrn*20;
+				left1+= 20 + attrn*20;
+				attr.set({'top': top1, 'left': left1});
 
-				//todo
-				attr.set({'top ': top1, 'left' : left1});
-				//document.getElementById(idDiv).css({top: top1, left: left1});
-				//document.getElementById(idDiv).style.left = left1;
-				//document.getElementById(idDiv).style.top = top1;
 			},this);
 			
 
@@ -2094,6 +2152,7 @@ app.CanvasView = Backbone.View.extend({
 			app.plumb.detachEveryConnection({fireEvent : false});
 			app.plumb.deleteEveryEndpoint();
 			this.model.get('diagrams').removeAll();
+			this.model.get('attributes').removeAll();
 		},
 
 		updateHistory : function() {
@@ -2419,6 +2478,7 @@ app.ContextMenuView = Backbone.View.extend({
 	},
 		
 	deleteDiagram : function() {
+		// ativa o 'deleteDiagram' do DiagramView.view 
 		this.diagramView.deleteDiagram();
 	},
 		
