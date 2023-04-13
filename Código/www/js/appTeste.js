@@ -1031,6 +1031,16 @@ app.newAttributeView = Backbone.View.extend({
 		
 	parentSelector : '#canvas',
 
+	events : {
+		
+		// TODO:
+		// Delete the NewAttr and remove its view from canvas
+		//'click .badge-delete' : 'deleteNewAttr',
+		
+		// Muda posição no canvas e de seus relacionamentos
+			
+		'mouseup' : 'updatePosition',
+	},
 	//id= '<%= name %>', ERRADO
 
 	initialize : function() {
@@ -1047,6 +1057,8 @@ app.newAttributeView = Backbone.View.extend({
 		//tem que ser chamado depois do update (!resolvido: o comando de capitura'change' no canvas view é acionado depois do update)
 		//imprime os divs com coordenadas do diagram selecionado
 		// Render attr id
+
+		alert("teste")
 		this.el.id = this.model.get('name');
 			
 		// TODO: include other attr fields
@@ -1073,7 +1085,7 @@ app.newAttributeView = Backbone.View.extend({
 	},
 
 	render2 : function() {
-		//alert('render2');
+		alert('render2');
 		// Set position
 		this.$el.css({        
 			'top': this.model.get('top'),
@@ -1102,6 +1114,22 @@ app.newAttributeView = Backbone.View.extend({
 			this.model.trigger("destroy", this.model); 
 			app.canvasView.updateHistory();
 		}
+	
+	updatePosition : function(event) {
+		var grid = app.canvas.get("snapToGrid");
+		this.model.set({
+			'left': Math.round(this.$el.position().left / grid) * grid,
+			'top' : Math.round(this.$el.position().top / grid) * grid
+		});
+
+		//alert("update attr position");
+
+		// var plumbConnections = app.plumb.getConnections(this.$el);
+		
+		// for (var i = 0; i < plumbConnections.length; i++) {
+		// 	app.plumbUtils.updateLabelsPosition(plumbConnections[i]);
+		// }
+		jsPlumb.repaintEverything();
 	},
 
 
@@ -1184,7 +1212,7 @@ app.DiagramView = Backbone.View.extend({
 				}, this);
 			}
 
-			/*// Render attributes
+			/*// Render attributes antigo
 			alert("new");
 			var newattributes = this.model.get('attributes');						
 			newattributes.each(function(attribute) {	
